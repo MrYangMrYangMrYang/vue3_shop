@@ -1,29 +1,34 @@
 //引入路由对象
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useCookies } from "vue3-cookies";
+import { showFailToast } from 'vant'
+import { POST } from '@/services/request'
 
 //引入组件
 import home from '@/components/home.vue'
 import BusinessIndex from '@/components/business/index.vue'
-import register from '@/components/register.vue'
-import login from '@/components/login.vue'
-import BusinessProfile from '@/components/business/profile.vue'
-import BusinessEmail from '@/components/business/email.vue'
-import ProductList from '@/components/product/list.vue'
-import ProductInfo from '@/components/product/info.vue'
-import AddressIndex from '@/components/business/address/index.vue'
-import AddressAdd from '@/components/business/address/add.vue'
-import AddressEdit from '@/components/business/address/edit.vue'
 import CartIndex from '@/components/cart/index.vue'
-import CartConfirm from '@/components/cart/confirm.vue'
-import OrderIndex from '@/components/order/index.vue'
-import OrderExpress from '@/components/order/express.vue'
-import OrderInfo from '@/components/order/info.vue'
-import OrderEveluate from '@/components/order/eveluate.vue'
 
+// 不常用的组件异步加载
+const login = () => import('@/components/login.vue')
+const register = () => import('@/components/register.vue')
+const BusinessProfile = () => import('@/components/business/profile.vue')
+const BusinessEmail = () => import('@/components/business/email.vue')
+const ProductList = () => import('@/components/product/list.vue')
+const ProductInfo = () => import('@/components/product/info.vue')
+const AddressIndex = () => import('@/components/business/address/index.vue')
+const AddressAdd = () => import('@/components/business/address/add.vue')
+const AddressEdit = () => import('@/components/business/address/edit.vue')
+const CartConfirm = () => import('@/components/cart/confirm.vue')
+const OrderIndex = () => import('@/components/order/index.vue')
+const OrderExpress = () => import('@/components/order/express.vue')
+const OrderInfo = () => import('@/components/order/info.vue')
+const OrderEveluate = () => import('@/components/order/eveluate.vue')
 
 //创建路由
-export default createRouter({
-    history: createWebHashHistory(), //hash路由模式s
+const router = createRouter({
+    // ...路由配置
+    history: createWebHashHistory(), //history路由模式
     //路由列表
     routes: [
         {
@@ -35,7 +40,8 @@ export default createRouter({
             path: '/business/index',
             name: 'BusinessIndex', 
             component: BusinessIndex,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -43,7 +49,7 @@ export default createRouter({
             path: '/business/profile',
             name: 'BusinessProfile', 
             component: BusinessProfile,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -51,25 +57,25 @@ export default createRouter({
             path: '/business/email',
             name: 'BusinessEmail', 
             component: BusinessEmail,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
         {
-            path: '/product/list', //路由地址
-            name: 'ProductList',//路由名字
-            component: ProductList, //路由组件
+            path: '/product/list', 
+            name: 'ProductList',
+            component: ProductList, 
         },
         {
-            path: '/product/info', //路由地址
-            name: 'ProductInfo',//路由名字
-            component: ProductInfo, //路由组件
+            path: '/product/info', 
+            name: 'ProductInfo',
+            component: ProductInfo, 
         },
         {
             path: '/business/address/index',
             name: 'AddressIndex', 
             component: AddressIndex,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -77,7 +83,7 @@ export default createRouter({
             path: '/business/address/add',
             name: 'AddressAdd', 
             component: AddressAdd,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -85,7 +91,7 @@ export default createRouter({
             path: '/business/address/edit',
             name: 'AddressEdit', 
             component: AddressEdit,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -93,7 +99,7 @@ export default createRouter({
             path: '/cart/index',
             name: 'CartIndex', 
             component: CartIndex,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -101,7 +107,7 @@ export default createRouter({
             path: '/cart/confirm',
             name: 'CartConfirm', 
             component: CartConfirm,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -109,7 +115,7 @@ export default createRouter({
             path: '/order/index',
             name: 'OrderIndex', 
             component: OrderIndex,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
@@ -117,25 +123,23 @@ export default createRouter({
             path: '/order/express',
             name: 'OrderExpress', 
             component: OrderExpress,
-            meta:{ //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            meta:{ 
                 IsLogin: true 
             }
         },
         {
-            path: '/order/info', // 路由地址
-            name: 'OrderInfo', // 路由名字
-            component: OrderInfo, // 路由组件
-            meta: {
-                //加上meta 就代表需要登录的，如果没有meta就说不用登录
+            path: '/order/info', 
+            name: 'OrderInfo', 
+            component: OrderInfo, 
+            meta: {                
                 IsLogin: true 
             }
         },
         {
-            path: '/order/eveluate', // 路由地址
-            name: 'OrderEveluate', // 路由名字
-            component: OrderEveluate, // 路由组件
+            path: '/order/eveluate', 
+            name: 'OrderEveluate', 
+            component: OrderEveluate, 
             meta: {
-                //加上meta 就代表需要登录的，如果没有meta就说不用登录
                 IsLogin: true 
             }
         },
@@ -151,3 +155,72 @@ export default createRouter({
         }
     ]
 })
+
+//初始化
+const {cookies} = useCookies()
+
+// 路由守卫
+// 在进入路由前，判断一下该路由是否需要登录
+// to 去哪
+// from 从哪来
+// next 是否要让他通过路由访问
+router.beforeEach(async (to, from, next) => {
+    //拿到是否需要登录的属性
+    var IsLogin = to.meta.IsLogin ? to.meta.IsLogin : false
+
+    //如果为true 就说明需要登录
+    if(!IsLogin)
+    {
+        //不用登录也可以访问，直接通过
+        next()
+        return false
+    }
+
+    //获取cookie
+    var business = cookies.get('business') ? cookies.get('business') : {};
+
+    //如何判断对象是否为空
+    if(Object.keys(business).length <= 0)
+    {
+        showFailToast({
+            message: '请先登录',
+            duration: 500,
+        })
+
+        next('/login')
+    }else
+    {
+        //判断一个对象是否具备某个属性,如果对象不为空，就获取属性
+        var id = business.hasOwnProperty('id') ? business.id : 0;
+        var mobile = business.hasOwnProperty('mobile') ? business.mobile : 0;
+
+        //组装数据
+        var data = {id,mobile}
+
+        var result = await POST({
+            url: "/business/check",
+            params: data
+        })
+
+        if(result.code == 0)
+        {
+            //cookie伪造的
+            cookies.remove('business');
+
+            //提醒+跳转
+            showFailToast({
+                message: result.msg,
+                duration: 1000,
+            })
+            
+            next(result.url)
+        }else
+        {
+            //覆盖一下cookies,刷新数据
+            cookies.set('business', result.data)
+            next()
+        }
+    }
+})
+
+export default router
