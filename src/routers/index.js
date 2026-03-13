@@ -28,7 +28,7 @@ const OrderEveluate = () => import('@/components/order/eveluate.vue')
 //创建路由
 const router = createRouter({
     // ...路由配置
-    history: createWebHashHistory(), //history路由模式
+    history: createWebHashHistory(), //哈希路由模式
     //路由列表
     routes: [
         {
