@@ -1,5 +1,5 @@
 //引入路由对象
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { useCookies } from "vue3-cookies";
 import { showFailToast } from 'vant'
 import { POST } from '@/services/request'
@@ -27,8 +27,8 @@ const OrderEveluate = () => import('@/components/order/eveluate.vue')
 
 //创建路由
 const router = createRouter({
-    // ...路由配置
-    history: createWebHashHistory(), //哈希路由模式
+    //路由模式
+    history: createWebHistory(), 
     //路由列表
     routes: [
         {
