@@ -69,8 +69,8 @@
 
   //初始化数据
   let business = reactive({
-    mobile:'13516671500',
-    password:'wo1dinkaoyan'
+    mobile:'',
+    password:''
   })
 
   //验证规则
@@ -81,7 +81,7 @@
         message: '请输入手机号码',
       },
       {
-        pattern: /(^1[3|4|5|7|8][0-9]{9}$)/,
+        pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/,
         message: '手机号码格式有误'
       }
     ],
