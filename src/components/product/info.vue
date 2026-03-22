@@ -59,6 +59,11 @@
 </template>
 
 <script setup>
+  // 添加这一行，定义组件名称
+  defineOptions({
+    name: 'product-info'
+  })
+
   import {useRouter, useRoute} from 'vue-router'
   import {reactive, ref, onBeforeMount} from 'vue'
   import {POST, UPLOAD} from '@/services/request'

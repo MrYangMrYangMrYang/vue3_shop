@@ -54,6 +54,11 @@
   
 </template>
 <script setup>
+  // 添加这一行，定义组件名称
+  defineOptions({
+    name: 'cart'
+  })
+
   import {useRouter, useRoute} from 'vue-router'
   import {reactive, ref, onBeforeMount, computed} from 'vue'
   import {POST, UPLOAD} from '@/services/request'

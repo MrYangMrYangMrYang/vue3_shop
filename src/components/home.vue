@@ -67,6 +67,11 @@
 </template>
 
 <script setup>
+  // 添加这一行，定义组件名称
+  defineOptions({
+    name: 'home'
+  })
+
   import {POST, UPLOAD} from '@/services/request'
   import {useRouter, useRoute} from 'vue-router'
   import {reactive, ref, onBeforeMount} from 'vue'

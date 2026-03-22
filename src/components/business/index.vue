@@ -62,6 +62,11 @@
 </template>
 
 <script setup>
+  // 添加这一行，定义组件名称
+  defineOptions({
+    name: 'business'
+  })
+
   import Menu from '@/components/common/Menu.vue'
   import { useCookies } from "vue3-cookies";
   import {showSuccessToast, showFailToast, showConfirmDialog} from 'vant'
