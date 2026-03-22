@@ -13,7 +13,7 @@
       <!-- 手机号 -->
       <van-field
         v-model="business.mobile"
-        disabled
+        readonly
         name="mobile"
         label="手机号码"
         placeholder="请输入手机号码"
@@ -139,7 +139,7 @@
         message: '请输入手机号码',
       },
       {
-        pattern: /(^1[3|4|5|7|8][0-9]{9}$)/,
+        pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/,
         message: '手机号码格式有误'
       }
     ],
