@@ -1,47 +1,40 @@
 <template>
-  <!--图标样式-->
-  <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css" />
-  <!--布局框架-->
-  <link rel="stylesheet" type="text/css" href="/css/util.css" />
-  <!--主要样式-->
-  <link rel="stylesheet" type="text/css" href="/css/main.css" />
-  
-  <div class="limiter">
-    <div class="container-login100" style="background-image: url('/images/海.jpg');">
-        <div class="wrap-login100 p-b-150">
-            <div style=" width:200px; heigth:200px; margin:0 auto 20px;"><img src="/images/tx.png" style="width:100%;heigth:100%;border-radius:50%;"/></div>
-            <van-form @submit="login">
-                <van-cell-group inset>
-                  <!-- 手机号 -->
-                  <van-field
-                    v-model="business.mobile"
-                    name="mobile"
-                    label="手机号码"
-                    placeholder="请输入手机号码"
-                    :rules="rules.mobile"
-                  />
-  
-                  <!-- 密码 -->
-                  <van-field
-                    v-model="business.password"
-                    type="password"
-                    name="password"
-                    label="密码"
-                    placeholder="请输入密码"
-                    :rules="rules.password"
-                  />
-                </van-cell-group>
-  
-                <div style="width:10rem;margin:20px auto 0px;">
-                  <van-button round block type="success" native-type="submit" size="small">登录</van-button>
-                </div>
-              </van-form>
-              <router-link to="/register">
-                <div>
-                    <button style="display:block; margin: 15px auto 0; color:white">没有账号，请先注册</button>
-                </div>
-              </router-link>             
+  <div class="login-wrapper">
+    <div class="login-bg"></div>
+    <div class="login-content">
+      <div class="avatar-container">
+        <img src="/images/tx.png" class="avatar" />
+      </div>
+      <div class="login-card">
+        <h2 class="login-title">欢迎登录</h2>
+        <van-form @submit="login">
+          <van-cell-group inset>
+            <van-field
+              v-model="business.mobile"
+              name="mobile"
+              label="手机号码"
+              placeholder="请输入手机号码"
+              :rules="rules.mobile"
+            />
+            <van-field
+              v-model="business.password"
+              type="password"
+              name="password"
+              label="密码"
+              placeholder="请输入密码"
+              :rules="rules.password"
+            />
+          </van-cell-group>
+          <div class="btn-wrapper">
+            <van-button round block native-type="submit" class="login-btn">登 录</van-button>
+          </div>
+        </van-form>
+        <div class="login-footer">
+          <router-link to="/register" class="register-link">
+            没有账号？立即注册
+          </router-link>
         </div>
+      </div>
     </div>
   </div>
 </template>
@@ -54,26 +47,20 @@
   import { useCookies } from "vue3-cookies";
 
   const {cookies} = useCookies();
-
-  // 初始化路由的跳转函数
   const router = useRouter()
 
-  //获取cookie
   var buscheck = cookies.get('business') ? cookies.get('business') : {};
 
-  //说明对象中没有属性存在
   if(Object.keys(buscheck).length > 0)
   {
-    router.push('business/index')
+    router.push('/business/index')
   }
 
-  //初始化数据
   let business = reactive({
     mobile:'',
     password:''
   })
 
-  //验证规则
   let rules = reactive({
     mobile: [
       {
@@ -97,21 +84,17 @@
     ]
   })
 
-//   提交表单
   let login = async (values) => {
-    //组装数据
     var data = {
         mobile:values.mobile,
         password: values.password
     }
 
-    //请求接口
     var result = await POST({
         url: 'business/login',
         params: data
     })
 
-    //返回请求结果
     console.log(result)
 
     if(result.code == 0)
@@ -123,13 +106,156 @@
     showSuccessToast({
         message: result.msg,
         onClose: () => {
-            //存cookie，跳转
             cookies.set('business', result.data)
-
-            //跳转
             router.push(result.url)
         }
     })
   }
-
 </script>
+
+<style scoped>
+.login-wrapper {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-color);
+}
+
+.login-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 70, 78, 0.8) 0%, rgba(255, 138, 92, 0.8) 100%);
+  z-index: -1;
+}
+
+.login-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.avatar-container {
+  margin-bottom: 32px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(255, 70, 78, 0.3);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px 24px 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.login-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 32px;
+  letter-spacing: 1px;
+}
+
+:deep(.van-cell-group--inset) {
+  margin: 0;
+  background: transparent;
+}
+
+:deep(.van-field) {
+  background: #f7f8fa !important;
+  margin-bottom: 16px;
+  border-radius: 12px !important;
+  padding: 12px 16px;
+}
+
+.btn-wrapper {
+  margin-top: 32px;
+}
+
+.login-btn {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  color: white !important;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 8px 16px rgba(255, 70, 78, 0.25);
+}
+
+.login-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.login-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.register-link {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.register-link::after {
+  content: ' >';
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+:deep(.van-cell-group--inset) {
+  margin: 0;
+}
+
+:deep(.van-field) {
+  border-radius: 12px;
+  background: #F7F8FA;
+  margin-bottom: 12px;
+  padding: 16px;
+}
+
+:deep(.van-field__label) {
+  color: #969799;
+  font-weight: 500;
+}
+
+:deep(.van-field__control) {
+  color: #323233;
+}
+
+:deep(.van-button--success) {
+  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%);
+  border: none;
+  box-shadow: 0 4px 16px rgba(255, 70, 78, 0.4);
+}
+
+:deep(.van-button--success:active) {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(255, 70, 78, 0.3);
+}
+</style>

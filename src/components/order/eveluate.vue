@@ -1,24 +1,87 @@
 <template>
-  <div>
-    <van-sticky>
-      <!-- 导航栏 -->
-      <van-nav-bar
-        title="订单评价"
-        left-arrow
-        left-text="返回"
-        @click-left="back"
-      />
-    </van-sticky>
+  <div class="evaluate-page">
+    <van-nav-bar
+      title="发表评价"
+      left-arrow
+      @click-left="back"
+      class="custom-nav"
+    />
 
-    <van-cell-group inset>
-      <van-field v-model="values" placeholder="亲 请输入您的评价哦" />
-    </van-cell-group>
+    <div class="evaluate-container">
+      <div class="evaluate-card card-item">
+        <div class="section-title">评价内容</div>
+        <van-field
+          v-model="values"
+          rows="4"
+          autosize
+          type="textarea"
+          maxlength="200"
+          placeholder="分享您的购物体验，帮助更多小伙伴~"
+          show-word-limit
+          class="evaluate-input"
+        />
+      </div>
 
-    <center>
-      <van-button type="primary" class="heg" @click="sub">提交</van-button>
-    </center>
+      <div class="action-btn">
+        <van-button round block type="primary" @click="sub">
+          发布评价
+        </van-button>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.evaluate-page {
+  min-height: 100vh;
+  background: var(--bg-color);
+}
+
+.custom-nav {
+  background: var(--primary-gradient);
+}
+
+:deep(.van-nav-bar__title),
+:deep(.van-nav-bar .van-icon) {
+  color: white !important;
+}
+
+.evaluate-container {
+  padding: 12px;
+}
+
+.card-item {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.section-title {
+  padding: 16px 16px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.evaluate-input {
+  padding: 12px 16px;
+}
+
+.action-btn {
+  margin-top: 32px;
+  padding: 0 16px;
+}
+
+:deep(.van-button--primary) {
+  background: var(--primary-gradient);
+  border: none;
+  height: 46px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(255, 70, 78, 0.2);
+}
+</style>
 
 <script setup>
 import { useRouter, useRoute } from "vue-router"

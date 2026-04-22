@@ -1,67 +1,234 @@
 <template>
-  <van-sticky v-if="action">
-    <!-- 导航栏 -->
-    <van-nav-bar
-      title="购买结算"
-      left-arrow
-      left-text="返回"
-      @click-left="backbuy"
-    />
-  </van-sticky>
+  <div class="confirm-page">
+    <van-sticky>
+      <van-nav-bar
+        :title="action ? '购买结算' : '订单结算'"
+        left-arrow
+        @click-left="action ? backbuy() : back()"
+        class="custom-nav"
+      />
+    </van-sticky>
 
-  <van-sticky v-else>
-    <!-- 导航栏 -->
-    <van-nav-bar
-      title="订单结算"
-      left-arrow
-      left-text="返回"
-      @click-left="back" 
-    />
-  </van-sticky>
+    <div class="confirm-content">
+      <!-- 地址选择区域 -->
+      <div class="address-section card-item">
+        <div class="address-header">
+          <van-icon name="location" class="location-icon" />
+          <span class="title">收货地址</span>
+        </div>
+        
+        <div v-if="address && address.length > 0" class="address-info" @click="AddressToggle">
+          <div class="user-info">
+            <span class="name">{{ address[0].name }}</span>
+            <span class="tel">{{ address[0].tel }}</span>
+          </div>
+          <div class="address-detail">
+            {{ address[0].address }}
+          </div>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+        
+        <van-contact-card 
+          v-else 
+          type="add" 
+          add-text="请添加收货地址" 
+          @click="AddressAdd" 
+          class="add-address-card"
+        />
+        
+        <div class="address-border"></div>
+      </div>
+      
+      <!-- 商品列表区域 -->
+      <div class="goods-section card-item">
+        <div class="section-title">商品清单</div>
+        <div class="cart-item" v-for="cart in cartlist" :key="cart.id">
+          <van-card
+            :num="cart.nums"
+            :price="cart.total"
+            :title="cart.product.name"
+            :thumb="cart.product.thumbs_text"
+          >
+            <template #desc>
+              <div class="goods-desc">
+                <span>单价: ¥{{ cart.price }}</span>
+                <span class="stock">库存: {{ cart.product.stock }}</span>
+              </div>
+            </template>
+          </van-card>
+        </div>
+      </div>
 
-  <!-- 选择收货地址 -->
-  <!-- <van-contact-card type="edit" v-if="address" :name="address.consignee" :tel="address.address"  @click="AddressToggle" /> -->
-  <div class="adress">
-    <div class="tb"><span class="qrdd-a1-img1"></span></div>
-    <van-address-list v-if="address" :list="address" @edit="AddressToggle" style="padding:0px 10px 0px;border-bottom:dashed 3px #666;"/>
-    <van-contact-card type="add" add-text="请添加收货地址" @click="AddressAdd" v-else />
+      <!-- 订单备注 -->
+      <div class="remark-section card-item">
+        <div class="section-title">订单备注</div>
+        <van-field
+          v-model="remark"
+          rows="2"
+          autosize
+          type="textarea"
+          maxlength="100"
+          placeholder="有什么想对卖家说的吗？"
+          show-word-limit
+          class="remark-input"
+        />
+      </div>
+    </div>
+
+    <!-- 提交订单栏 -->
+    <van-submit-bar 
+      :price="price" 
+      button-text="提交订单" 
+      @submit="submit" 
+      safe-area-inset-bottom
+      class="custom-submit-bar"
+    />
   </div>
-  
-  <!-- 购物车列表 -->
-  <div class="cart" v-for="cart in cartlist">
-    <!-- 商品卡片 -->
-    <van-card
-      class="goods-card"
-      :title="cart.product.name"
-      :price="cart.total"
-      :thumb="cart.product.thumbs_text"
-      :num="cart.nums"
-    >
-      <template #desc>
-        <div style="color: #969799">库存：{{ cart.product.stock }}</div>
-        <div>单价：{{ cart.price }}</div>
-      </template>
-    </van-card>
-  </div>
-
-  <!-- 订单备注 -->
-  <van-cell-group inset>
-    <van-field
-      v-model="remark"
-      rows="2"
-      autosize
-      type="textarea"
-      maxlength="100"
-      placeholder="请输入订单备注"
-      show-word-limit
-    />
-  </van-cell-group>
-
-  <!-- 提交订单栏 -->
-  <van-submit-bar :price="price" button-text="提交订单" @submit="submit" style="z-index: 999;">
-  </van-submit-bar>
-  
 </template>
+
+<style scoped>
+.confirm-page {
+  min-height: 100vh;
+  background: var(--bg-color);
+  padding-bottom: 80px;
+}
+
+.custom-nav {
+  background: var(--primary-gradient);
+}
+
+:deep(.van-nav-bar__title),
+:deep(.van-nav-bar .van-icon),
+:deep(.van-nav-bar__text) {
+  color: white !important;
+}
+
+.confirm-content {
+  padding: 12px;
+}
+
+.card-item {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.address-section {
+  position: relative;
+  padding: 16px;
+}
+
+.address-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.location-icon {
+  font-size: 18px;
+  color: var(--primary-color);
+  margin-right: 6px;
+}
+
+.address-info {
+  position: relative;
+  padding-right: 24px;
+}
+
+.user-info {
+  margin-bottom: 4px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.tel {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.address-detail {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.arrow-icon {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-placeholder);
+}
+
+.address-border {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #ff464e 0,
+    #ff464e 20%,
+    transparent 20%,
+    transparent 25%,
+    #58a 25%,
+    #58a 45%,
+    transparent 45%,
+    transparent 50%
+  );
+  background-size: 80px 3px;
+}
+
+.section-title {
+  padding: 16px 16px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.goods-section :deep(.van-card) {
+  background: white;
+  padding: 8px 16px;
+}
+
+.goods-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 12px;
+}
+
+.remark-input {
+  padding: 12px 16px;
+}
+
+.custom-submit-bar {
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.van-submit-bar__button--danger) {
+  background: var(--primary-gradient);
+  border: none;
+}
+
+:deep(.van-contact-card::before) {
+  display: none;
+}
+
+.add-address-card {
+  padding: 12px 0;
+}
+</style>
 
 <script setup>
   import {useRouter, useRoute} from 'vue-router'

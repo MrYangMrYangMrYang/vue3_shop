@@ -1,64 +1,76 @@
 <template>
-  <link type="text/css" rel="stylesheet" href="/css/style.css" />
+  <div class="list-page">
+    <van-sticky>
+      <div class="nav-header">
+        <van-nav-bar
+          :title="TypeName"
+          left-arrow
+          left-text="返回"
+          @click-left="back"
+        >
+          <template #right>
+            <van-icon name="search" size="20" @click="SearchShow = true" />
+          </template>
+        </van-nav-bar>
 
-  <van-sticky>
-    <!-- 导航栏 -->
-    <van-nav-bar
-      :title="TypeName"
-      left-arrow
-      left-text="返回"
-      @click-left="back"
-    >
-      <template #right>
-        <van-icon name="search" size="18" @click="SearchShow = true" />
-      </template>
-    </van-nav-bar>
-
-    <van-popup v-model:show="SearchShow" position="top">
-      <van-search @search="search" v-model="keywords" placeholder="请输入搜索关键词" />
-    </van-popup>
-
-    <!-- 下拉筛选 -->
-    <van-dropdown-menu>
-      <van-dropdown-item v-model="TypeActive" :options="TypeList" @change="TypeToggle" />
-      <van-dropdown-item v-model="FlagActive" :options="FlagList" @change="FlagToggle" />
-      <van-dropdown-item v-model="SortActive" :options="SortList" @change="SortToggle" />
-      <van-dropdown-item v-model="ByActive" :options="ByList" @change="ByToggle" />
-    </van-dropdown-menu>
-
-  </van-sticky>
-
-  <!-- 列表 -->
-  <van-pull-refresh v-model="refreshing" @refresh="refresh">
-    <van-list
-      v-model:loading="loading"
-      :finished="finished"
-      :offset="10"
-      :immediate-check="false"
-      finished-text="没有更多了"
-      @load="load"
-    >
-      <ul class="proul">
-        <li v-for="item in list" :key="item.id">
-          <router-link :to="{path: '/product/info', query:{proid: item.id}}">
-            <img :src="item.thumbs_text" style="width:190px;height:160px;"/>
-          </router-link>
-          <router-link :to="{path: '/product/info', query:{proid: item.id}}">
-            <p class="tit">{{item.name}}</p>
-          </router-link>
-          <div class="price">
-            <p>￥{{item.price}}</p>
+        <van-popup v-model:show="SearchShow" position="top" :style="{ height: 'auto' }">
+          <div class="search-box">
+            <van-search @search="search" v-model="keywords" placeholder="请输入搜索关键词" shape="round" background="#fff" />
           </div>
-        </li>
-      </ul>
-    </van-list>
-  </van-pull-refresh>
+        </van-popup>
 
-  <!-- 返回顶部 -->
-  <van-back-top right="20" bottom="60" />
+        <van-dropdown-menu class="filter-menu">
+          <van-dropdown-item v-model="TypeActive" :options="TypeList" @change="TypeToggle" />
+          <van-dropdown-item v-model="FlagActive" :options="FlagList" @change="FlagToggle" />
+          <van-dropdown-item v-model="SortActive" :options="SortList" @change="SortToggle" />
+          <van-dropdown-item v-model="ByActive" :options="ByList" @change="ByToggle" />
+        </van-dropdown-menu>
+      </div>
+    </van-sticky>
 
-  <!-- 引入公共组件 -->
-  <Menu />
+    <van-pull-refresh v-model="refreshing" @refresh="refresh">
+      <van-list
+        v-model:loading="loading"
+        :finished="finished"
+        :offset="10"
+        :immediate-check="false"
+        finished-text="没有更多了"
+        @load="load"
+      >
+        <ul class="product-list" v-if="list.length > 0">
+          <li v-for="item in list" :key="item.id" class="product-item">
+            <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="product-link">
+              <div class="img-wrapper">
+                <img :src="item.thumbs_text" />
+              </div>
+              <div class="product-content">
+                <p class="title">{{item.name}}</p>
+                <div class="bottom-row">
+                  <span class="price">{{item.price}}</span>
+                  <span class="sales">销量 {{item.sales || 0}}</span>
+                </div>
+              </div>
+            </router-link>
+          </li>
+        </ul>
+
+        <!-- 空状态 -->
+        <van-empty
+          v-else-if="!loading && finished"
+          description="没有找到相关商品"
+          image="search"
+        >
+          <van-button round type="primary" class="back-home-btn" @click="resetFilters">
+            查看全部商品
+          </van-button>
+        </van-empty>
+      </van-list>
+    </van-pull-refresh>
+
+    <van-back-top right="20" bottom="70" />
+
+    <Menu />
+  </div>
 </template>
 
 <script setup>
@@ -88,7 +100,6 @@ let SearchShow = ref(false)
 let keywords = ref('')
 let isFirstLoad = ref(true)
 let isLoading = ref(false)
-// 添加一个标志，记录是否是从详情页返回的
 let isFromDetail = ref(false)
 
 let FlagList = [
@@ -113,39 +124,39 @@ let ByList = [
   { text: '升序', value: 'asc' },
 ];
 
-// 分类切换 - 去掉判断，直接执行
 const TypeToggle = async (value) => {
-  console.log('分类切换:', value)
   TypeActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
-// 属性切换 - 去掉判断，直接执行
 const FlagToggle = async (value) => {
-  console.log('属性切换:', value)
   FlagActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
-// 排序切换 - 去掉判断，直接执行
 const SortToggle = async (value) => {
-  console.log('排序切换:', value)
   SortActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
-// 排序方式切换 - 去掉判断，直接执行
 const ByToggle = async (value) => {
-  console.log('排序方式切换:', value)
   ByActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
-// 搜索
+const resetFilters = async () => {
+  TypeActive.value = 0
+  FlagActive.value = '0'
+  SortActive.value = 'createtime'
+  ByActive.value = 'desc'
+  keywords.value = ''
+  await refresh()
+}
+
 const search = async (value) => {
   SearchShow.value = false
   keywords.value = value
@@ -157,39 +168,35 @@ const back = () => {
   router.go(-1)
 }
 
-// 下拉刷新
 const refresh = async () => {
   if (isLoading.value) return
-  
+
   isLoading.value = true
   page.value = 1
   finished.value = false
   list.value = []
-  
+
   await ListData()
-  
+
   isLoading.value = false
-  // 刷新完成后重置标志
   isFromDetail.value = false
 }
 
-// 上拉加载
 const load = async () => {
   if (finished.value || isLoading.value) return
-  
+
   if (refreshing.value) {
     refreshing.value = false
   }
-  
+
   await ListData()
 }
 
-// 接口请求数据
 const ListData = async () => {
   if (isLoading.value && page.value > 1) return
-  
+
   isLoading.value = true
-  
+
   try {
     var result = await POST({
       url: '/index/list',
@@ -224,7 +231,6 @@ const ListData = async () => {
   }
 }
 
-// 请求分类
 const type = async () => {
   try {
     var result = await POST({
@@ -248,7 +254,6 @@ const type = async () => {
   }
 }
 
-// 监听路由参数变化
 watch(() => route.query.typeid, (newTypeId, oldTypeId) => {
   if (newTypeId !== oldTypeId && !isFirstLoad.value) {
     TypeActive.value = newTypeId ? parseInt(newTypeId) : 0
@@ -257,25 +262,17 @@ watch(() => route.query.typeid, (newTypeId, oldTypeId) => {
   }
 })
 
-// 组件从缓存激活时刷新数据
-// 但只在从详情页返回时才刷新，避免影响筛选功能
 onActivated(() => {
-  console.log('列表页激活')
-  // 如果是从详情页返回，才刷新数据
   if (isFromDetail.value) {
-    console.log('从详情页返回，刷新数据')
     refresh()
   }
 })
 
-// 路由离开前记录，用于判断是否是从详情页返回
 onBeforeRouteUpdate((to, from) => {
-  // 如果是从详情页返回
   if (from.path === '/product/info' && to.path === '/product/list') {
     isFromDetail.value = true
   }
-  
-  // 如果分类参数变化
+
   if (to.query.typeid !== from.query.typeid) {
     TypeActive.value = to.query.typeid ? parseInt(to.query.typeid) : 0
     isFromDetail.value = false
@@ -283,9 +280,7 @@ onBeforeRouteUpdate((to, from) => {
   }
 })
 
-// 组件卸载前的清理
 onBeforeUnmount(() => {
-  console.log('清理 list 组件')
   loading.value = false
   finished.value = true
   refreshing.value = false
@@ -299,3 +294,172 @@ onMounted(async () => {
   await refresh()
 })
 </script>
+
+<style scoped>
+.list-page {
+  background: #F7F8FA;
+  min-height: 100vh;
+  padding-bottom: 70px;
+}
+
+.nav-header {
+  background: white;
+}
+
+:deep(.van-nav-bar) {
+  background: var(--primary-gradient);
+}
+
+:deep(.van-nav-bar__title) {
+  color: white;
+}
+
+:deep(.van-nav-bar__left) {
+  color: white;
+}
+
+:deep(.van-nav-bar__left .van-icon) {
+  color: white;
+}
+
+:deep(.van-nav-bar__left span) {
+  color: white;
+}
+
+:deep(.van-nav-bar__right .van-icon) {
+  color: white;
+}
+
+:deep(.van-dropdown-menu__bar) {
+  height: 44px;
+  box-shadow: 0 2px 8px rgba(255, 70, 78, 0.06);
+}
+
+:deep(.van-dropdown-menu__title) {
+  color: #323233;
+  font-size: 14px;
+}
+
+:deep(.van-dropdown-menu__title--active) {
+  color: var(--primary-color) !important;
+}
+
+:deep(.van-dropdown-item__option--active) {
+  color: var(--primary-color) !important;
+}
+
+:deep(.van-dropdown-item__option--active .van-dropdown-item__icon) {
+  color: var(--primary-color) !important;
+}
+
+:deep(.van-dropdown-menu__title::after) {
+  border-color: transparent transparent #323233 #323233;
+}
+
+:deep(.van-dropdown-menu__title--active::after) {
+  border-color: transparent transparent var(--primary-color) var(--primary-color) !important;
+}
+
+.back-home-btn {
+  width: 160px;
+  background: var(--primary-gradient);
+  border: none;
+}
+
+.search-box {
+  padding: 12px 16px;
+  background: white;
+}
+
+.product-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 12px;
+  margin: 0;
+}
+
+.product-item {
+  list-style: none;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(255, 70, 78, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-item:active {
+  transform: scale(0.98);
+}
+
+.product-link {
+  display: block;
+  text-decoration: none;
+}
+
+.img-wrapper {
+  width: 100%;
+  height: 0;
+  padding-bottom: 85%;
+  position: relative;
+  overflow: hidden;
+  background: #F7F8FA;
+}
+
+.img-wrapper img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-content {
+  padding: 12px;
+}
+
+.title {
+  font-size: 14px;
+  color: #323233;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+
+.bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.price {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.sales {
+  font-size: 11px;
+  color: #969799;
+}
+
+:deep(.van-list__finished-text) {
+  color: #969799;
+  font-size: 12px;
+  padding: 16px 0;
+}
+
+:deep(.van-back-top) {
+  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%);
+  box-shadow: 0 4px 16px rgba(255, 70, 78, 0.4);
+}
+
+:deep(.van-back-top__icon) {
+  color: white;
+}
+</style>
