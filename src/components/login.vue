@@ -164,8 +164,6 @@
   width: 100%;
   max-width: 340px;
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: 24px;
   padding: 40px 24px 32px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);

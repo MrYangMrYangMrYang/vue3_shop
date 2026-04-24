@@ -7,18 +7,7 @@
       </div>
     </div>
 
-    <van-swipe class="aui-m-slider" :autoplay="3000" indicator-color="white" :height="180">
-      <van-swipe-item v-for="item in hots" :key="item.id">
-        <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="slider-link">
-          <img :src="item.thumbs_text" class="slider-img" />
-        </router-link>
-      </van-swipe-item>
-    </van-swipe>
-
-    <div class="category-section card">
-      <div class="section-header">
-        <span class="section-title">商品分类</span>
-      </div>
+    <div class="category-section scroll-mode">
       <div class="category-wrapper">
         <router-link to="/product/list" class="category-item">
           <div class="category-icon">
@@ -33,6 +22,19 @@
           <span class="category-name">{{ item.name }}</span>
         </router-link>
       </div>
+    </div>
+
+    <div class="hot-section">
+      <div class="section-header">
+        <span class="section-title">近日热门</span>
+      </div>
+      <van-swipe class="aui-m-slider" :autoplay="3000" indicator-color="white">
+        <van-swipe-item v-for="item in hots" :key="item.id">
+          <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="slider-link">
+            <img :src="item.thumbs_text" class="slider-img" />
+          </router-link>
+        </van-swipe-item>
+      </van-swipe>
     </div>
 
     <div class="recommend-section">
@@ -50,7 +52,7 @@
               <p class="title text-ellipsis-2">{{ item.name }}</p>
               <div class="price-row">
                 <span class="price">{{ item.price }}</span>
-                <span class="buy-btn">立即购买</span>
+                <span class="buy-btn">查看详情</span>
               </div>
             </div>
           </router-link>
@@ -165,27 +167,19 @@
 }
 
 .aui-m-slider {
-  margin: var(--spacing-md);
+  margin: 0 var(--spacing-md) var(--spacing-md);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
-.slider-link {
-  display: block;
-  width: 100%;
-  height: 100%;
+.hot-section {
+  margin-top: var(--spacing-sm);
 }
 
-.slider-img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-}
-
-.category-section {
-  margin: var(--spacing-md);
-  padding: var(--spacing-md);
+.hot-section .section-header {
+  margin-left: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
 }
 
 .section-header {
@@ -221,21 +215,79 @@
   text-decoration: none;
 }
 
-/* ========== 分类区域 ========== */
+.slider-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.slider-img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  object-position: center bottom;
+  display: block;
+}
+
+.category-section.scroll-mode {
+  margin: var(--spacing-md) 0;
+  padding: 0 var(--spacing-md);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  position: relative;
+  padding-left: 12px;
+}
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 18px;
+  background: var(--primary-gradient);
+  border-radius: var(--radius-full);
+}
+
+.more-link {
+  font-size: 12px;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+/* ========== 分类区域 - 横向滑动 ========== */
 .category-wrapper {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-md) var(--spacing-sm);
-  margin-top: var(--spacing-xs);
+  display: flex;
+  overflow-x: auto;
+  padding: var(--spacing-sm) 0;
+  gap: var(--spacing-lg);
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.category-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .category-item {
+  flex: 0 0 auto; /* 防止被压缩 */
   display: flex;
   flex-direction: column;
   align-items: center;
   text-decoration: none;
   transition: transform var(--transition-fast);
-  padding: var(--spacing-xs) 0;
 }
 
 .category-item:active {

@@ -98,13 +98,6 @@
             保存修改
           </van-button>
         </div>
-
-        <!-- 退出登录 -->
-        <div class="logout-btn">
-          <van-button round block class="logout-button" @click="handleLogout">
-            退出登录
-          </van-button>
-        </div>
       </van-form>
     </div>
 
@@ -264,27 +257,6 @@
   transform: scale(0.98);
   box-shadow: var(--shadow-sm);
 }
-
-/* 退出登录按钮 */
-.logout-btn {
-  margin-top: 20px;
-  padding: 0 16px 30px;
-}
-
-.logout-button {
-  background: transparent !important;
-  border: 1px solid var(--danger-color) !important;
-  color: var(--danger-color) !important;
-  height: 46px;
-  font-size: 15px;
-  border-radius: var(--radius-full);
-  transition: all var(--transition-fast);
-}
-
-.logout-button:active {
-  background: rgba(255, 70, 78, 0.05) !important;
-  transform: scale(0.98);
-}
 </style>
 
 <script setup>
@@ -346,19 +318,6 @@
 
   // 头像
   const AvatarPreview = ref([{ url: business.avatar_text }])
-
-  // 退出登录
-  const handleLogout = () => {
-    showConfirmDialog({
-      title: '退出登录',
-      message: '确定要退出登录吗？',
-    })
-    .then(() => {
-      cookies.remove('business')
-      router.replace('/login')
-    })
-    .catch(() => {})
-  }
 
   // 保存表单
   const profile = async (values) => {

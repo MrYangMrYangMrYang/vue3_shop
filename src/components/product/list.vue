@@ -114,9 +114,9 @@ let TypeList = ref([
 ]);
 
 let SortList = [
-  { text: '按上架时间', value: 'createtime' },
-  { text: '按价格', value: 'price' },
-  { text: '按库存', value: 'stock' }
+  { text: '上架时间', value: 'createtime' },
+  { text: '价格', value: 'price' },
+  { text: '库存', value: 'stock' }
 ];
 
 let ByList = [
