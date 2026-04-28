@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 个人资料编辑组件
+  @module components/business/profile
+  @description 负责用户详细资料的修改与提交，包括头像上传、昵称、性别、地区、邮箱及密码修改，
+               并提供退出登录功能，是用户信息管理的核心页面
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /business/profile (需要登录)
+  <router-link to="/business/profile">编辑资料</router-link>
+-->
 <template>
   <div class="profile-page">
     <van-nav-bar
@@ -68,7 +79,7 @@
           <div class="section-title">账户与安全</div>
           <van-cell-group inset :border="false">
             <van-field
-              v-model="business.mobile"
+              :model-value="maskedMobile"
               readonly
               name="mobile"
               label="手机号码"
@@ -94,8 +105,15 @@
 
         <!-- 保存按钮 -->
         <div class="action-btn">
-          <van-button round block type="primary" native-type="submit">
+          <van-button round block type="primary" native-type="submit" :loading="submitting" :disabled="submitting">
             保存修改
+          </van-button>
+        </div>
+
+        <!-- 退出登录 -->
+        <div class="logout-btn-wrapper">
+          <van-button round block plain type="danger" @click="logout">
+            退出登录
           </van-button>
         </div>
       </van-form>
@@ -239,7 +257,12 @@
 /* 保存按钮 */
 .action-btn {
   margin-top: 32px;
-  padding: 0 16px;
+  padding: 0 4px;
+}
+
+.logout-btn-wrapper {
+  margin-top: 16px;
+  padding: 0 4px;
 }
 
 :deep(.van-button--primary) {
@@ -260,101 +283,122 @@
 </style>
 
 <script setup>
-  import { useCookies } from "vue3-cookies";
-  import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
-  import { useRouter } from 'vue-router'
-  import { reactive, ref } from 'vue'
-  import { areaList } from '@vant/area-data'
-  import { POST, UPLOAD } from '@/services/request'
+import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
+import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { useRouter } from 'vue-router'
+import { reactive, ref } from 'vue'
+import { areaList } from '@vant/area-data'
+import { POST, UPLOAD } from '@/services/request'
+import { isBizFail } from '@/utils/result'
 
-  const { cookies } = useCookies()
-  const router = useRouter()
+const userStore = useUserStore()
+const cartStore = useCartStore()
+const router = useRouter()
+const submitting = ref(false)
 
-  var login = cookies.get('business') ? cookies.get('business') : {};
-  const business = reactive(login)
-  
-  const back = () => {
-    router.go(-1)
+var login = userStore.userInfo || {}
+const business = reactive(login)
+
+/** 退出登录 */
+const logout = () => {
+  showConfirmDialog({
+    title: '退出提醒',
+    message: '确定要退出当前账号吗？',
+    confirmButtonColor: '#FF464E'
+  }).then(() => {
+    userStore.clearUserInfo()
+    cartStore.setCount(0)
+    showSuccessToast('已安全退出')
+    router.push('/login')
+  }).catch(() => {})
+}
+
+/** 手机号脱敏 */
+const maskMobile = (mobile) => {
+  if (!mobile) return ''
+  const mobileStr = String(mobile).trim()
+  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
+  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
+}
+const maskedMobile = maskMobile(business.mobile)
+
+const back = () => { router.go(-1) }
+
+/** 表单验证规则 */
+let rules = reactive({
+  nickname: [{ required: true, message: '请输入昵称' }],
+  email: [
+    { required: true, message: '请输入邮箱' },
+    { pattern: /^([A-Za-z0-9_\-\.\u4e00-\u9fa5])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,8})$/, message: '邮箱格式有误' }
+  ],
+})
+
+/** 性别选择 */
+const GenderShow = ref(false)
+const GenderList = ref([
+  { text: '保密', value: '0' },
+  { text: '男', value: '1' },
+  { text: '女', value: '2' },
+])
+
+const GenderConfirm = ({ selectedOptions }) => {
+  GenderShow.value = false
+  business.gender = selectedOptions[0].value
+  business.sex_text = selectedOptions[0].text
+}
+
+/** 地区选择 */
+const RegionShow = ref(false)
+
+const RegionConfirm = ({ selectedOptions }) => {
+  RegionShow.value = false
+  const [province, city, district] = selectedOptions
+  business.region_code = district.value
+  let region_text = ''
+  if (province.text) region_text += province.text
+  if (city.text) region_text += `/${city.text}`
+  if (district.text) region_text += `/${district.text}`
+  business.region_text = region_text
+}
+
+/** 头像预览 */
+const AvatarPreview = ref([{ url: business.avatar_text }])
+
+/** 提交保存 */
+const profile = async (values) => {
+  if (submitting.value) return false
+
+  var data = {
+    id: business.id,
+    mobile: business.mobile,
+    nickname: values.nickname,
+    email: values.email,
+    gender: business.gender,
+    region: business.region_code,
   }
 
-  // 验证规则
-  let rules = reactive({
-    nickname: [
-      { required: true, message: '请输入昵称' },
-    ],
-    email: [
-      { required: true, message: '请输入邮箱' },
-      { pattern: /^([A-Za-z0-9_\-\.\u4e00-\u9fa5])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,8})$/, message: '邮箱格式有误' }
-    ],
-  })
+  if (values.password) data.password = values.password
 
-  // 性别
-  const GenderShow = ref(false)
-  const GenderList = ref([
-    { text: '保密', value: '0' },
-    { text: '男', value: '1' },
-    { text: '女', value: '2' },
-  ])
+  var avatar = values.avatar && values.avatar[0] ? values.avatar[0].file : null
+  if (avatar) data.avatar = avatar
 
-  const GenderConfirm = ({ selectedOptions }) => {
-    GenderShow.value = false
-    business.gender = selectedOptions[0].value
-    business.sex_text = selectedOptions[0].text
-  }
-
-  // 地区
-  const RegionShow = ref(false)
-
-  const RegionConfirm = ({ selectedOptions }) => {
-    RegionShow.value = false
-    const [province, city, district] = selectedOptions
-    business.region_code = district.value
-    let region_text = ''
-    if (province.text) region_text += province.text
-    if (city.text) region_text += `/${city.text}`
-    if (district.text) region_text += `/${district.text}`
-    business.region_text = region_text
-  }
-
-  // 头像
-  const AvatarPreview = ref([{ url: business.avatar_text }])
-
-  // 保存表单
-  const profile = async (values) => {
-    var data = {
-      id: business.id,
-      mobile: values.mobile,
-      nickname: values.nickname,
-      email: values.email,
-      gender: business.gender,
-      region: business.region_code,
-    }
-
-    if (values.password) {
-      data.password = values.password
-    }
-
-    var avatar = values.avatar && values.avatar[0] ? values.avatar[0].file : null
-    if (avatar) {
-      data.avatar = avatar
-    }
-
-    var result = await UPLOAD({
-      url: '/business/profile',
-      params: data
-    })
-
-    if (result.code == 0) {
-      showFailToast(result.msg)
-      return false
-    }
+  submitting.value = true
+  try {
+    var result = await UPLOAD({ url: '/business/profile', params: data })
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     showSuccessToast({
       message: result.msg,
       onClose: () => {
-        cookies.set('business', result.data)
+        userStore.setUserInfo(result.data)
         router.go(-1)
       }
     })
+  } catch (error) {
+    showFailToast('保存失败，请稍后重试')
+  } finally {
+    submitting.value = false
   }
+}
 </script>

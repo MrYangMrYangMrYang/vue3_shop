@@ -1,3 +1,7 @@
+/**
+ * 全局公共样式模块
+ * 定义全局 CSS 变量（色彩、间距、圆角等）及基础工具类样式
+ */
 :root {
   --primary-gradient: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%);
   --primary-color: #FF464E;

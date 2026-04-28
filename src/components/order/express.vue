@@ -1,3 +1,13 @@
+<!-- 
+  @fileoverview 物流详情组件
+  @module components/order/express
+  @description 负责实时物流轨迹的查询与展示，包括快递公司信息、运单号及各节点的配送进度，
+               使用时间轴形式展示物流动态，支持复制运单号功能
+  @requires services/request
+  @example
+  // 路由配置: /order/express?id=123 (需要登录)
+  <router-link :to="{ path: '/order/express', query: { id: 123 } }">查看物流</router-link>
+-->
 <template>
   <div class="express-container">
     <van-sticky>
@@ -10,11 +20,12 @@
         <div class="company-info">
           <van-icon name="logistics" size="24" class="company-icon" />
           <div>
-            <div class="company-name">{{ expressInfo.expName || '京东快递' }}</div>
-            <div class="tracking-info">
-              <span class="tracking-no">运单号：{{ list.exfasscode || 'JD008927315546' }}</span>
+            <div class="company-name">{{ expressInfo.expName || '暂无物流公司信息' }}</div>
+            <div class="tracking-info" v-if="list.exfasscode">
+              <span class="tracking-no">运单号：{{ list.exfasscode }}</span>
               <van-icon name="copy-o" class="copy-icon" @click="copyTrackingNo" />
             </div>
+            <div class="tracking-no" v-else>运单号：暂无</div>
           </div>
         </div>
       </div>
@@ -22,7 +33,7 @@
       <!-- 物流步骤条 -->
       <div class="express-card steps-card">
         <div class="card-title">物流轨迹</div>
-        <div class="steps-timeline">
+        <div class="steps-timeline" v-if="list.list && list.list.length">
           <div class="timeline-item" v-for="(item, index) in list.list" :key="index" :class="{ active: index === 0 }">
             <div class="timeline-dot" :class="{ 'active-dot': index === 0 }">
               <van-icon v-if="index === 0" name="checked" size="10" />
@@ -34,6 +45,7 @@
             </div>
           </div>
         </div>
+        <van-empty v-else description="暂无物流轨迹" image="search" />
       </div>
     </div>
   </div>
@@ -195,21 +207,26 @@
 </style>
 
 <script setup>
+// 物流详情页：
+// 负责物流公司与运单信息展示、轨迹时间线渲染与运单号复制。
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onBeforeMount } from 'vue'
 import { POST } from '@/services/request'
-import { showToast, showFailToast } from 'vant'
-import { useCookies } from 'vue3-cookies'
+import { showFailToast } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { copyText } from '@/utils/clipboard'
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
 
 const router = useRouter()
 const route = useRoute()
-const { cookies } = useCookies()
+const userStore = useUserStore()
 
-const login = cookies.get('business') || {}
+const login = userStore.userInfo || {}
 const busid = login.id || 0
-const orderid = route.query.orderid || 0
+const orderid = getRouteQueryValue(route.query, 'orderid', 0)
 
-const list = ref([])
+const list = ref({ list: [] })
 const expressInfo = ref({})
 
 const back = () => {
@@ -217,35 +234,34 @@ const back = () => {
 }
 
 const copyTrackingNo = () => {
-  const textarea = document.createElement('textarea')
-  textarea.value = list.value.exfasscode || ''
-  document.body.appendChild(textarea)
-  textarea.select()
-  document.execCommand('copy')
-  document.body.removeChild(textarea)
-  showToast('复制成功')
+  copyText(list.value.exfasscode || '')
 }
 
 onBeforeMount(async () => {
-  const result = await POST({
-    url: '/order/express',
-    params: {
-      busid: busid,
-      orderid: orderid
-    }
-  })
-
-  if (result.code == 0) {
-    showFailToast({
-      message: result.msg,
-      onClose: () => {
-        router.go(-1)
+  try {
+    const result = await POST({
+      url: '/order/express',
+      params: {
+        busid: busid,
+        orderid: orderid
       }
     })
-    return
-  }
 
-  list.value = result.data
-  expressInfo.value = result.data
+    if (isBizFail(result)) {
+      showFailToast({
+        message: result.msg,
+        onClose: () => {
+          router.go(-1)
+        }
+      })
+      return
+    }
+
+    const data = result.data || { list: [] }
+    list.value = data
+    expressInfo.value = data
+  } catch (error) {
+    showFailToast('物流信息加载失败，请稍后重试')
+  }
 })
 </script>

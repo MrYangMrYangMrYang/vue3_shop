@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 个人中心首页组件
+  @module components/business/index
+  @description 负责用户信息概览展示、常用功能入口导航（订单、地址、邮箱认证等），
+               是用户个人中心的入口页面，提供快捷操作入口与用户状态展示
+  @requires stores/user
+  @requires components/common/Menu
+  @example
+  // 路由配置: /business/index (需要登录)
+  <router-link to="/business/index">个人中心</router-link>
+-->
 <template>
   <div class="profile-page">
     <!-- 用户信息头部 -->
@@ -9,7 +20,7 @@
           </div>
           <div class="user-detail">
             <div class="nickname">{{ userInfo.nickname || (isLoggedIn ? '未设置昵称' : '点击登录') }}</div>
-            <div class="mobile">{{ userInfo.mobile || (isLoggedIn ? '暂无手机号' : '登录后体验更多功能') }}</div>
+            <div class="mobile">{{ maskedMobile || (isLoggedIn ? '暂无手机号' : '登录后体验更多功能') }}</div>
           </div>
           <van-icon name="arrow" color="rgba(255,255,255,0.7)" />
         </router-link>
@@ -21,12 +32,7 @@
       <van-cell-group inset>
         <van-cell title="我的订单" is-link to="/order/index" icon="orders-o" />
         <van-cell title="收货地址" is-link to="/business/address/index" icon="location-o" />
-        <van-cell title="基本资料" is-link to="/business/profile" icon="user-o" />
         <van-cell v-if="userInfo.auth == '0'" title="邮箱认证" is-link to="/business/email" icon="envelop-o" />
-      </van-cell-group>
-
-      <van-cell-group inset class="mt-12">
-        <van-cell title="退出登录" is-link @click="logout" icon="log-out" class="logout-cell" />
       </van-cell-group>
     </div>
     
@@ -91,12 +97,10 @@
 
 /* 功能列表 */
 .function-list {
-  margin-top: 12px;
+  margin-top: -14px;
   padding: 0 12px;
-}
-
-.mt-12 {
-  margin-top: 12px;
+  position: relative;
+  z-index: 2;
 }
 
 :deep(.van-cell-group--inset) {
@@ -116,60 +120,34 @@
   color: var(--primary-color);
   margin-right: 12px;
 }
-
-.logout-cell {
-  color: var(--danger-color);
-}
-
-:deep(.logout-cell .van-cell__left-icon) {
-  color: var(--danger-color);
-}
-
-:deep(.logout-cell .van-cell__title) {
-  color: var(--danger-color);
-}
 </style>
 
 <script setup>
 defineOptions({ name: 'business' })
 
 import Menu from '@/components/common/Menu.vue'
-import { useCookies } from "vue3-cookies"
-import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { reactive, computed } from 'vue'
 
-const { cookies } = useCookies()
+const userStore = useUserStore()
 const router = useRouter()
 
 const defaultAvatar = '/images/default-avatar.png'
-const login = cookies.get('business') ? cookies.get('business') : {}
-const userInfo = reactive(login)
+const userInfo = reactive(userStore.userInfo || {})
 
-// 是否已登录
+/** 是否已登录 */
 const isLoggedIn = computed(() => userInfo.id && userInfo.id > 0)
+const maskedMobile = computed(() => maskMobile(userInfo.mobile))
 
-// 头像加载失败时使用默认图
-const handleAvatarError = (e) => {
-  e.target.src = defaultAvatar
+/** 手机号脱敏 */
+const maskMobile = (mobile) => {
+  if (!mobile) return ''
+  const mobileStr = String(mobile).trim()
+  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
+  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
 }
 
-// 退出登录
-const logout = () => {
-  showConfirmDialog({
-    title: '退出登录',
-    message: '确定要退出登录吗？',
-  })
-    .then(() => {
-      cookies.remove('business')
-      showSuccessToast({
-        message: '已退出登录',
-        duration: 1500,
-        onClose: () => {
-          router.replace('/login')
-        }
-      })
-    })
-    .catch(() => {})
-}
+/** 头像加载失败处理 */
+const handleAvatarError = (e) => { e.target.src = defaultAvatar }
 </script>

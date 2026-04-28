@@ -1,3 +1,15 @@
+<!-- 
+  @fileoverview 购物车管理组件
+  @module components/cart/index
+  @description 负责已选商品的列表展示、数量调整（步进器）、商品删除（左滑）及全选/勾选结算逻辑，
+               是购物流程的核心页面，支持实时计算选中商品总价
+  @requires stores/cart
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /cart/index (需要登录)
+  <router-link to="/cart/index">购物车</router-link>
+-->
 <template>
   <div class="cart-page">
     <van-sticky>
@@ -12,21 +24,25 @@
           </div>
 
           <van-swipe-cell class="swipe-wrapper">
-            <div class="goods-card-wrapper" @click="goToProduct(cart.product.id)">
-              <van-card class="goods-card" :thumb="cart.product.thumbs_text">
+            <div class="goods-card-wrapper" @click="goToProduct(cart.product?.id || cart.proid)">
+              <van-card 
+                class="goods-card" 
+                :thumb="cart.product?.thumbs_text || cart.thumbs_text || cart.image || cart.product?.image"
+                lazy-load
+              >
                 <template #title>
-                  <div class="product-title">{{ cart.product.name }}</div>
+                  <div class="product-title">{{ cart.product?.name || cart.name || cart.proname }}</div>
                 </template>
                 <template #price>
                   <div class="price-row">
                     <span class="currency">¥</span>
-                    <span class="amount">{{ cart.total }}</span>
+                    <span class="amount">{{ getCartTotal(cart) }}</span>
                   </div>
                 </template>
                 <template #desc>
                   <div class="desc-info">
-                    <div class="stock">库存：{{ cart.product.stock }}</div>
-                    <div class="unit-price">单价：¥{{ cart.price }}</div>
+                    <div class="stock">库存：{{ cart.product?.stock || cart.stock || 0 }}</div>
+                    <div class="unit-price">单价：¥{{ formatAmount(cart.price) }}</div>
                   </div>
                 </template>
                 <template #num>
@@ -291,110 +307,146 @@
 defineOptions({ name: 'cart' })
 
 import { useRouter } from 'vue-router'
-import { ref, onBeforeMount, computed } from 'vue'
+import { ref, onBeforeMount, computed, watch } from 'vue'
 import Menu from '@/components/common/Menu.vue'
 import { POST } from '@/services/request'
+import axios from 'axios'
 import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
-import { useCookies } from "vue3-cookies"
+import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
+import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
+import { normalizeIdList } from '@/utils/params'
+import { isBizSuccess, isBizFail } from '@/utils/result'
 
 const router = useRouter()
-const { cookies } = useCookies()
+const userStore = useUserStore()
+const cartStore = useCartStore()
 
-const login = cookies.get('business') ? cookies.get('business') : {}
-const busid = login.hasOwnProperty('id') ? login.id : 0
+/** 用户ID */
+const busid = computed(() => {
+  const login = userStore.userInfo || {}
+  return login.hasOwnProperty('id') ? login.id : 0
+})
 
 const cartlist = ref([])
 const checked = ref([])
 const toggle = ref(false)
+const mutating = ref(false)
 
-const back = () => {
-  router.go(-1)
-}
+const back = () => { router.go(-1) }
 
+/** 跳转商品详情 */
 const goToProduct = (productId) => {
-  if (productId) {
-    router.push({
-      path: '/product/info',
-      query: { proid: productId }
-    })
-  }
+  if (productId) router.push({ path: '/product/info', query: { proid: productId } })
 }
 
-onBeforeMount(async () => {
-  await CartData()
-})
-
+/** 加载购物车数据 */
 const CartData = async () => {
-  const result = await POST({
-    url: '/cart/index',
-    params: { busid }
-  })
-  cartlist.value = result.data || []
-}
+  if (!busid.value) return
 
-const ToggleCheck = () => {
-  if (toggle.value) {
-    checked.value = cartlist.value.map(item => item.id)
-  } else {
-    checked.value = []
+  try {
+    const result = await POST({ url: '/cart/index', params: { busid: busid.value } })
+
+    if (isBizSuccess(result)) {
+      cartlist.value = result.data || []
+      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums || 0), 0)
+      cartStore.setCount(totalNums)
+    } else {
+      cartlist.value = []
+      cartStore.setCount(0)
+    }
+  } catch (error) {
+    if (!axios.isCancel(error)) showFailToast('购物车加载失败，请稍后重试')
   }
 }
 
+onBeforeMount(() => {})
+
+watch(busid, (newVal) => {
+  if (newVal) CartData()
+  else { cartlist.value = []; cartStore.setCount(0) }
+}, { immediate: true })
+
+/** 全选/取消全选 */
+const ToggleCheck = () => {
+  if (toggle.value) checked.value = cartlist.value.map(item => item.id)
+  else checked.value = []
+}
+
+/** 更新全选状态 */
 const CheckList = (value) => {
   const list = cartlist.value.map(item => item.id)
-  const result = checked.value.length === list.length && 
-    [...checked.value].sort().toString() === list.sort().toString()
+  const result = checked.value.length === list.length && [...checked.value].sort().toString() === list.sort().toString()
   toggle.value = result
 }
 
+/** 计算选中商品总价（分） */
 const price = computed(() => {
   let sum = 0
   cartlist.value.forEach(item => {
-    if (checked.value.includes(item.id)) {
-      sum += parseFloat(item.total)
-    }
+    if (checked.value.includes(item.id)) sum += roundToTwo(item.total)
   })
-  return sum * 100
+  return toFen(sum)
 })
 
-const CartStep = async (value, detail) => {
-  const data = { busid, cartid: detail.name, nums: value }
-  const result = await POST({ url: '/cart/edit', params: data })
+const formatAmount = (amount) => formatCurrency(amount)
 
-  if (result.code == 0) {
-    showFailToast(result.msg)
-    return false
-  }
-  cartlist.value = result.data
+/** 计算单件商品小计 */
+const getCartTotal = (cart) => {
+  const total = cart.total || (roundToTwo(cart.price) * parseInt(cart.nums || 0, 10))
+  return formatAmount(total)
 }
 
+/** 修改商品数量 */
+const CartStep = async (value, detail) => {
+  if (mutating.value) return
+  mutating.value = true
+  const data = { busid: busid.value, cartid: detail.name, nums: value }
+
+  try {
+    const result = await POST({ url: '/cart/edit', params: data })
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
+
+    cartlist.value = result.data
+    const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums), 0)
+    cartStore.setCount(totalNums)
+  } catch (error) {
+    showFailToast('更新购物车失败，请稍后重试')
+  } finally {
+    mutating.value = false
+  }
+}
+
+/** 删除商品 */
 const CartDel = async (cartid) => {
   showConfirmDialog({
     title: '删除提醒',
     message: '是否确认删除该宝贝',
-  })
-  .then(async () => {
-    const data = { cartid, busid }
-    const result = await POST({ url: '/cart/del', params: data })
+    confirmButtonColor: '#FF464E'
+  }).then(async () => {
+    if (mutating.value) return
+    mutating.value = true
+    const data = { cartid, busid: busid.value }
 
-    if (result.code == 0) {
-      showFailToast(result.msg)
-      return false
+    try {
+      const result = await POST({ url: '/cart/del', params: data })
+      if (isBizFail(result)) { showFailToast(result.msg); return false }
+
+      cartlist.value = result.data
+      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums), 0)
+      cartStore.setCount(totalNums)
+      checked.value = checked.value.filter(id => id !== cartid)
+    } catch (error) {
+      showFailToast('删除失败，请稍后重试')
+    } finally {
+      mutating.value = false
     }
-    cartlist.value = result.data
-    checked.value = checked.value.filter(id => id !== cartid)
-  })
-  .catch(() => {})
+  }).catch(() => {})
 }
 
+/** 提交结算 */
 const submit = () => {
-  if (checked.value.length <= 0) {
-    showFailToast('请选择购物车商品')
-    return false
-  }
-  router.push({
-    path: '/cart/confirm',
-    query: { cartids: checked.value }
-  })
+  if (checked.value.length <= 0) { showFailToast('请选择购物车商品'); return false }
+  router.push({ path: '/cart/confirm', query: { cartids: normalizeIdList(checked.value) } })
 }
 </script>

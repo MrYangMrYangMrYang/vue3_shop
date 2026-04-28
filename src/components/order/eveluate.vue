@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 订单评价组件
+  @module components/order/eveluate
+  @description 负责用户对已完成订单的评价内容录入与发布提交，
+               提供文本域输入与字数限制，评价成功后自动返回订单列表
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /order/eveluate?orderid=123 (需要登录)
+  <router-link :to="{ path: '/order/eveluate', query: { orderid: 123 } }">去评价</router-link>
+-->
 <template>
   <div class="evaluate-page">
     <van-nav-bar
@@ -84,23 +95,25 @@
 </style>
 
 <script setup>
+// 订单评价页：
+// 负责提交评价内容并在成功后返回上一页。
 import { useRouter, useRoute } from "vue-router"
 import { ref, reactive, onBeforeMount } from "vue"
 import { POST } from "@/services/request"
-import { showSuccessToast, showFailToast, showConfirmDialog } from "vant"
-import { useCookies } from "vue3-cookies"
+import { showSuccessToast, showFailToast } from "vant"
+import { useUserStore } from "@/stores/user"
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
 
 const router = useRouter()
 const route = useRoute()
-const { cookies } = useCookies()
+const userStore = useUserStore()
 
 // 获取用户信息
-var login = cookies.get("business") ? cookies.get("business") : {}
+var login = userStore.userInfo || {}
 var busid = login.hasOwnProperty("id") ? login.id : 0
-var orderid = route.query.orderid ? route.query.orderid : 0
+var orderid = getRouteQueryValue(route.query, 'orderid', 0)
 let values = ref("")
-
-// console.log(orderid)
 
 const back = () => {
   router.go(-1)
@@ -116,7 +129,7 @@ const sub = async () => {
     },
   })
 
-  if (result.code == 0) {
+  if (isBizFail(result)) {
     showFailToast({
       message: result.msg,
     })

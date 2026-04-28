@@ -1,26 +1,341 @@
-# Logs
-logs
-*.log
+# ============================================
+# Vue Shop - Git 忽略配置文件
+# 基于 GitHub Gitignore 模板优化
+# 适用于 Vue 3 + Vite + Node.js 项目
+# ============================================
+
+# ====================
+# 📦 依赖目录
+# ====================
+
+# Node.js 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# ====================
+# 🏗️ 构建产物
+# ====================
+
+# Vite 构建输出
+dist/
+dist-ssr/
+*.local
+
+# 构建缓存
+.cache/
+.temp/
+.tmp/
+
+# ====================
+# 🔐 环境变量与敏感信息
+# ====================
+
+# 环境变量文件（包含 API 密钥、数据库密码等）
+.env
+.env.local
+.env.*.local
+
+# 敏感配置（如果有）
+config/*.local.json
+secrets/
+
+# ====================
+# 📝 日志文件
+# ====================
+
+# npm/pnpm/yarn 日志
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# 应用日志
+logs/
+*.log
+log/
 
-# Editor directories and files
+# 服务器日志
+server/logs/
+access.log
+error.log
+
+# ====================
+# 💻 编辑器与 IDE 配置
+# ====================
+
+# VS Code
 .vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+!.vscode/extensions.json      # 保留扩展推荐配置
+!.vscode/settings.json         # 可选：保留项目设置
+.vscode/tasks.json
+.vscode/launch.json
+*.code-workspace
 
-Vue讲义.html
+# JetBrains (WebStorm, PhpStorm 等)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+*.tmlanguage
+*.tmbundle
+*.tmp
+*.ko
+
+# Vim / Neovim
+*~
+\#*\#
+.#*
+Swp.*
+swo.*
+tags
+.tags
+.tags_by_file
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ====================
+# 🖥️ 操作系统文件
+# ====================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ Icon?
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ====================
+# 🌐 浏览器相关
+# ====================
+
+# 浏览器缓存
+.eslintcache
+.stylelintcache
+
+# 覆盖率报告
+coverage/
+*.lcov
+.nyc_output
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Vitest
+vitest.config.ts.timestamp-*
+
+
+# ====================
+# 📦 包管理器
+# ====================
+
+# npm
+package-lock.json              # 可选：如果团队需要锁定版本则保留
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.yarn/install-state.gz
+.pnp.*
+
+# pnpm
+pnpm-lock.yaml                # 可选：同上
+
+# ====================
+# 🔧 开发工具
+# ====================
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierrc.cache
+
+# Stylelint
+.stylelintcache
+
+# ====================
+# 🧪 测试相关
+# ====================
+
+# Jest
+coverage/
+junit.xml
+test-results/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# ====================
+# 📚 文档生成
+# ====================
+
+# JSDoc
+jsdoc/
+
+# Storybook
+storybook-static/
+
+# ====================
+# 🎨 设计资源（源文件）
+# ====================
+
+# 如果有设计稿的源文件（PSD, AI, Sketch 等）
+# *.psd
+# *.ai
+# *.sketch
+# *.fig
+
+# ====================
+# 🔄 版本控制辅助
+# ====================
+
+# 备份文件
+*.bak
+*.backup
+*.swp
+*.swo
+*~.nib
+
+# 补丁文件
+*.patch
+*.diff
+
+# 合并冲突标记
+*.orig
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+
+# ====================
+# 📱 移动端开发
+# ====================
+
+# Cordova / Ionic
+platforms/
+plugins/
+www/
+
+# React Native (如有)
+ios/build/
+android/app/build/
+android/.gradle/
+
+# ====================
+# ☁️ 云服务 / CI/CD
+# ====================
+
+# Serverless
+.serverless/
+.webpack/
+
+# Docker (可选：如果不想提交 Dockerfile)
+# docker-compose.yml
+# docker-compose.override.yml
+# Dockerfile*
+# .dockerignore
+
+# Terraform
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+.crash.*
+override.tf
+*.tfplan
+
+# ====================
+# 🎯 项目特定忽略
+# ====================
+
+# Vue Shop 特定文件
+Vue讲义.html                     # 讲义文档（不应提交）
+
+# 临时测试文件
+test-temp/
+debug/
+temp/
+
+# 性能分析
+.speed-measure-plugin-webpack-plugin.json
+
+# 错误报告
+error-screenshots/
+
+# ====================
+# ✅ 需要保留的例外
+# ====================
+
+# 保留这些文件（即使匹配上面的规则）
+
+# VS Code 扩展推荐
+!.vscode/extensions.json
+
+# README 和文档
+!README.md
+!LICENSE
+!CHANGELOG.md
+
+# 公共配置文件
+!.eslintrc.cjs
+!.prettierrc
+!.prettierignore
+!jsconfig.json
+!tsconfig.json
+
+# ====================
+# 📊 统计信息
+# ====================
+
+# 本文件统计：
+# - 总规则数: ~150+
+# - 覆盖范围: Node.js, Vue, Vite, 编辑器, OS, 工具链等
+# - 最后更新: 2024

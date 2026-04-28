@@ -1,3 +1,15 @@
+<!-- 
+  @fileoverview 商品详情组件
+  @module components/product/info
+  @description 负责展示商品完整信息：包括多图轮播、价格、库存、商品详情介绍（富文本），
+               并提供加入购物车与立即购买功能，支持图片预览、分享面板、客服联系
+  @requires stores/user
+  @requires stores/cart
+  @requires services/request
+  @example
+  // 路由配置: /product/info?proid=123
+  <router-link :to="{ path: '/product/info', query: { proid: 123 } }">查看详情</router-link>
+-->
 <template>
   <div class="product-info-page">
     <van-sticky>
@@ -74,27 +86,29 @@
 </template>
 
 <script setup>
-defineOptions({
-  name: 'product-info'
-})
+defineOptions({ name: 'product-info' })
 
 import { useRouter, useRoute } from 'vue-router'
-import { ref, onBeforeMount } from 'vue'
+import { ref, onBeforeMount, computed } from 'vue'
 import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast, showConfirmDialog, showImagePreview } from 'vant'
-import { useCookies } from "vue3-cookies"
+import { showSuccessToast, showFailToast, showConfirmDialog, showImagePreview, showDialog } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
+import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
 
 const router = useRouter()
 const route = useRoute()
-const { cookies } = useCookies()
+const userStore = useUserStore()
+const cartStore = useCartStore()
 
-// 获取用户信息
-const login = cookies.get('business') ? cookies.get('business') : {}
+/** 用户ID */
+const login = userStore.userInfo || {}
 const businessId = login.hasOwnProperty('id') ? login.id : 0
 
-const productId = route.query.hasOwnProperty('proid') ? route.query.proid : 0
+const productId = getRouteQueryValue(route.query, 'proid', 0)
 const product = ref({})
-const count = ref(0)
+const count = computed(() => cartStore.count)
 const mobile = ref('')
 const ShareShow = ref(false)
 const cartId = ref('')
@@ -114,137 +128,109 @@ const options = [
   ],
 ]
 
-onBeforeMount(async () => {
-  await ProductInfo()
-})
+onBeforeMount(async () => { await ProductInfo() })
 
-const back = () => {
-  router.go(-1)
-}
+const back = () => { router.go(-1) }
 
-// 商品信息
+/** 加载商品详情 */
 const ProductInfo = async () => {
-  const result = await POST({
-    url: '/index/info',
-    params: {
-      proid: productId,
-      busid: businessId
-    }
-  })
-
-  if (result.code == 0) {
-    showFailToast({
-      message: result.msg,
-      onClose: () => {
-        router.go(-1)
-      }
+  try {
+    const result = await POST({
+      url: '/index/info',
+      params: { proid: productId, busid: businessId }
     })
-    return false
-  }
 
-  product.value = result.data.product
-  count.value = result.data.count
-  mobile.value = result.data.contact
+    if (isBizFail(result) || !result.data || !result.data.product) {
+      showFailToast({
+        message: result.msg || '商品信息加载失败',
+        onClose: () => { router.go(-1) }
+      })
+      return false
+    }
+
+    product.value = result.data.product
+    cartStore.setCount(result.data.count || 0)
+    mobile.value = result.data.contact || ''
+  } catch (error) {
+    showFailToast('商品信息加载失败，请稍后重试')
+  }
 }
 
-// 图片预览
+/** 图片预览 */
 const previewImage = () => {
-  if (product.value.thumbs_text) {
-    showImagePreview([product.value.thumbs_text])
-  }
+  if (product.value.thumbs_text) showImagePreview([product.value.thumbs_text])
 }
 
-// 拨打电话
+/** 拨打客服电话 */
 const contact = async () => {
   showConfirmDialog({
     title: '拨打提醒',
     message: '是否确认拨打客服电话',
-  })
-  .then(() => {
-    location.href = `tel:${mobile.value}`
-  })
-  .catch(() => {})
+    confirmButtonColor: '#FF464E'
+  }).then(() => { location.href = `tel:${mobile.value}` }).catch(() => {})
 }
 
-// 分享
-const share = async (option) => {
-  ShareShow.value = false
-}
+/** 分享弹窗关闭 */
+const share = async (option) => { ShareShow.value = false }
 
-// 加入购物车
+/** 加入购物车 */
 const AddCart = async () => {
   showConfirmDialog({
     title: '购物车提醒',
     message: '是否将该宝贝加入到购物车',
-  })
-  .then(async () => {
-    if (!businessId) {
-      showFailToast('请先登录')
-      return false
-    }
+    confirmButtonColor: '#FF464E'
+  }).then(async () => {
+    if (!businessId) { showFailToast('请先登录'); return false }
 
-    const data = {
-      busid: businessId,
-      proid: productId
-    }
+    const data = { busid: businessId, proid: productId }
+    const result = await POST({ url: '/cart/add', params: data })
 
-    const result = await POST({
-      url: '/cart/add',
-      params: data
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
+
+    showDialog({
+      title: '操作成功',
+      message: '宝贝已成功加入购物车',
+      className: 'cart-success-dialog',
+      confirmButtonColor: '#FF464E',
+      confirmButtonText: '去购物车',
+      showCancelButton: true,
+      cancelButtonText: '再看看'
+    }).then((action) => {
+      if (action === 'confirm') router.push('/cart/index')
     })
 
-    if (result.code == 0) {
-      showFailToast(result.msg)
-      return false
-    }
-
-    showSuccessToast(result.msg)
-    await ProductInfo()
-  })
-  .catch(() => {})
+    cartStore.updateCount(businessId)
+  }).catch(() => {})
 }
 
-// 立即购买
+/** 立即购买（创建临时购物车记录并跳转结算） */
 const Buy = () => {
   showConfirmDialog({
     title: '购买提醒',
     message: '是否立即购买该宝贝',
-  })
-  .then(async () => {
-    if (!businessId) {
-      showFailToast('请先登录')
-      return false
-    }
+    confirmButtonColor: '#FF464E'
+  }).then(async () => {
+    if (!businessId) { showFailToast('请先登录'); return false }
 
     const result = await POST({
       url: '/cart/buy',
-      params: {
-        busid: businessId,
-        proid: productId,
-      }
+      params: { busid: businessId, proid: productId }
     })
 
-    if (result.code == 0) {
-      showFailToast({
-        message: result.msg,
-        onClose: () => {
-          router.go(-1)
-        },
-      })
+    if (isBizFail(result)) {
+      showFailToast({ message: result.msg, onClose: () => { router.go(-1) } })
       return false
     }
+
+    if (!result.data) { showFailToast('购买信息异常，请稍后重试'); return false }
 
     cartId.value = result.data
 
     router.push({
       path: '/cart/confirm',
-      query: {
-        cartids: cartId.value,
-        action: 'buy'
-      }
+      query: { cartids: normalizeIdList(cartId.value), action: 'buy' }
     })
-  })
-  .catch(() => {})
+  }).catch(() => {})
 }
 </script>
 
@@ -424,5 +410,21 @@ const Buy = () => {
 .btn-right {
   background: var(--primary-gradient) !important;
   border: none !important;
+}
+
+/* 加入购物车成功弹框按钮：改为主题文字风格 */
+:deep(.cart-success-dialog .van-dialog__footer .van-button) {
+  background: transparent !important;
+  border: none !important;
+}
+
+:deep(.cart-success-dialog .van-dialog__cancel) {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+}
+
+:deep(.cart-success-dialog .van-dialog__confirm) {
+  color: var(--primary-color) !important;
+  font-weight: 600;
 }
 </style>

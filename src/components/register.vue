@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 注册页面组件
+  @module components/register
+  @description 负责新用户账号注册：提供手机号与密码输入验证（格式校验）及账号创建提交，
+               注册成功后自动写入用户状态并跳转到个人中心，已登录用户自动跳转
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /register (无需登录，已登录自动跳转)
+  <router-link to="/register">注册</router-link>
+-->
 <template>
   <div class="register-page">
     <div class="register-container">
@@ -8,7 +19,7 @@
 
       <div class="register-card">
         <van-form @submit="register">
-          <van-cell-group inset border={false}>
+          <van-cell-group inset :border="false">
             <van-field
               v-model="business.mobile"
               name="mobile"
@@ -30,7 +41,7 @@
           </van-cell-group>
 
           <div class="action-btn">
-            <van-button round block type="primary" native-type="submit">
+            <van-button round block type="primary" native-type="submit" :loading="submitting" :disabled="submitting">
               立即注册
             </van-button>
           </div>
@@ -118,88 +129,55 @@
 </style>
 
 <script setup>
-  //创建响应式数据
-  // ref - 简单类型的响应式数据
-  // reactive - 复杂类型的响应式数据
-  // toRef - 从复杂类型中抽离单个 响应式属性出来
-  // toRefs - 从复杂类型中抽离多个 响应式属性出来
-  // readonly - 设置属性只读
-  import {reactive} from 'vue'
-  import {POST} from '@/services/request'
-  import {showSuccessToast, showFailToast} from 'vant'
-  import {useRouter} from 'vue-router'
-  import { useCookies } from "vue3-cookies";
+import { reactive, onBeforeMount, ref } from 'vue'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast } from 'vant'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { isBizFail } from '@/utils/result'
 
-  const {cookies} = useCookies();
+const userStore = useUserStore()
+const submitting = ref(false)
+const router = useRouter()
 
-  // 初始化路由的跳转函数
-  const router = useRouter()
+/** 已登录则跳转个人中心 */
+onBeforeMount(() => {
+  if (userStore.userInfo) router.push('/business/index')
+})
 
-  //获取cookie
-  var buscheck = cookies.get('business') ? cookies.get('business') : {};
+/** 注册表单数据 */
+let business = reactive({ mobile: '', password: '' })
 
-  //说明对象中没有属性存在
-  if(Object.keys(buscheck).length > 0)
-  {
-    router.push('business/index')
-  }
+/** 表单验证规则 */
+let rules = reactive({
+  mobile: [
+    { required: true, message: '请输入手机号码' },
+    { pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/, message: '手机号码格式有误' }
+  ],
+  password: [
+    { required: true, message: '请输入密码' },
+    { pattern: /.{6,}/, message: '密码只要6位以上' }
+  ]
+})
 
-  //初始化数据
-  let business = reactive({
-    mobile:'',
-    password:''
-  })
+/** 提交注册 */
+let register = async (values) => {
+  if (submitting.value) return false
+  var data = { mobile: values.mobile, password: values.password }
 
-  //验证规则
-  let rules = reactive({
-    mobile: [
-      {
-        required: true,
-        message: '请输入手机号码',
-      },
-      {
-        pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/,
-        message: '手机号码格式有误'
-      }
-    ],
-    password: [
-      {
-        required: true,
-        message: '请输入密码',
-      },
-      {
-        pattern: /.{6,}/,
-        message: '密码只要6位以上'
-      }
-    ]
-  })
+  submitting.value = true
+  try {
+    var result = await POST({ url: 'business/register', params: data })
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
-  //提交方法
-  let register = async (values) => 
-  {
-    //组装数据
-    var data = {
-      mobile: values.mobile,
-      password: values.password
-    };
-
-    var result = await POST({
-      url: 'business/register',
-      params: data
+    showSuccessToast({
+      message: result.msg,
+      onClose: () => { router.push(result.url) }
     })
-
-    if(result.code == 0)
-    {
-      showFailToast(result.msg)
-      return false
-    }else
-    {
-      showSuccessToast({
-        message: result.msg,
-        onClose: () => {
-          router.push(result.url)
-        }
-      })
-    }
+  } catch (error) {
+    showFailToast('注册失败，请稍后重试')
+  } finally {
+    submitting.value = false
   }
+}
 </script>

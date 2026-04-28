@@ -7,6 +7,19 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'vant-vendor': ['vant']
+        }
+      }
+    }
+  },
   server: {
     port: 6060,
     proxy: { //接口请求代理配置

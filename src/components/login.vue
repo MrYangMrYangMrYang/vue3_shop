@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 登录页面组件
+  @module components/login
+  @description 负责用户身份验证：包括手机号密码登录提交、表单校验（手机号格式、密码长度）、
+               登录状态管理（自动跳转已登录用户）及登录成功后页面跳转逻辑
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /login (无需登录，已登录自动跳转)
+  <router-link to="/login">登录</router-link>
+-->
 <template>
   <div class="login-wrapper">
     <div class="login-bg"></div>
@@ -26,7 +37,7 @@
             />
           </van-cell-group>
           <div class="btn-wrapper">
-            <van-button round block native-type="submit" class="login-btn">登 录</van-button>
+            <van-button round block native-type="submit" class="login-btn" :loading="submitting" :disabled="submitting">登 录</van-button>
           </div>
         </van-form>
         <div class="login-footer">
@@ -40,77 +51,58 @@
 </template>
 
 <script setup>
-  import {reactive} from 'vue'
-  import {POST} from '@/services/request'
-  import {showSuccessToast, showFailToast} from 'vant'
-  import {useRouter} from 'vue-router'
-  import { useCookies } from "vue3-cookies";
+import { reactive, onBeforeMount, ref } from 'vue'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast } from 'vant'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { isBizFail } from '@/utils/result'
 
-  const {cookies} = useCookies();
-  const router = useRouter()
+const userStore = useUserStore()
+const router = useRouter()
+const submitting = ref(false)
 
-  var buscheck = cookies.get('business') ? cookies.get('business') : {};
+/** 已登录则跳转个人中心 */
+onBeforeMount(() => {
+  if (userStore.userInfo) router.push('/business/index')
+})
 
-  if(Object.keys(buscheck).length > 0)
-  {
-    router.push('/business/index')
-  }
+/** 登录表单数据 */
+let business = reactive({ mobile: '', password: '' })
 
-  let business = reactive({
-    mobile:'',
-    password:''
-  })
+/** 表单验证规则 */
+let rules = reactive({
+  mobile: [
+    { required: true, message: '请输入手机号码' },
+    { pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/, message: '手机号码格式有误' }
+  ],
+  password: [
+    { required: true, message: '请输入密码' },
+    { pattern: /.{6,}/, message: '密码只要6位以上' }
+  ]
+})
 
-  let rules = reactive({
-    mobile: [
-      {
-        required: true,
-        message: '请输入手机号码',
-      },
-      {
-        pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/,
-        message: '手机号码格式有误'
-      }
-    ],
-    password: [
-      {
-        required: true,
-        message: '请输入密码',
-      },
-      {
-        pattern: /.{6,}/,
-        message: '密码只要6位以上'
-      }
-    ]
-  })
+/** 提交登录 */
+let login = async (values) => {
+  if (submitting.value) return false
+  var data = { mobile: values.mobile, password: values.password }
 
-  let login = async (values) => {
-    var data = {
-        mobile:values.mobile,
-        password: values.password
-    }
+  submitting.value = true
+  try {
+    var result = await POST({ url: 'business/login', params: data })
 
-    var result = await POST({
-        url: 'business/login',
-        params: data
-    })
-
-    console.log(result)
-
-    if(result.code == 0)
-    {
-        showFailToast(result.msg)
-        return false
-    }
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     showSuccessToast({
-        message: result.msg,
-        onClose: () => {
-            cookies.set('business', result.data)
-            router.push(result.url)
-        }
+      message: result.msg,
+      onClose: () => { userStore.setUserInfo(result.data); router.push(result.url) }
     })
+  } catch (error) {
+    showFailToast('登录失败，请稍后重试')
+  } finally {
+    submitting.value = false
   }
+}
 </script>
 
 <style scoped>

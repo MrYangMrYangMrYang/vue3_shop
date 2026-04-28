@@ -1,3 +1,15 @@
+<!-- 
+  @fileoverview 首页组件
+  @module components/home
+  @description 负责首页核心数据展示：包括商品分类快捷导航、热门商品轮播（Swipe）、好物推荐列表（Grid）及全局搜索入口，
+               是应用的默认着陆页，支持数据缓存与关键词搜索跳转
+  @requires services/request
+  @requires utils/cache
+  @requires components/common/Menu
+  @example
+  // 路由配置: / (首页，无需登录)
+  <router-link to="/">首页</router-link>
+-->
 <template>
   <div class="home-page" ref="homeContainer">
     <div class="topBox">
@@ -17,7 +29,7 @@
         </router-link>
         <router-link v-for="item in typelist" :key="item.id" :to="{path: '/product/list', query:{typeid: item.id}}" class="category-item">
           <div class="category-icon">
-            <img :src="item.thumb_text" />
+            <img v-lazy="item.thumb_text" />
           </div>
           <span class="category-name">{{ item.name }}</span>
         </router-link>
@@ -31,7 +43,7 @@
       <van-swipe class="aui-m-slider" :autoplay="3000" indicator-color="white">
         <van-swipe-item v-for="item in hots" :key="item.id">
           <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="slider-link">
-            <img :src="item.thumbs_text" class="slider-img" />
+            <img v-lazy="item.thumbs_text" class="slider-img" />
           </router-link>
         </van-swipe-item>
       </van-swipe>
@@ -43,10 +55,10 @@
         <router-link to="/product/list" class="more-link">查看更多 ›</router-link>
       </div>
       <ul class="product-grid" ref="productGrid">
-        <li v-for="(item, index) in recommend" :key="item.id">
+        <li v-for="item in recommend" :key="item.id">
           <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="product-card">
             <div class="img-wrapper">
-              <img :src="item.thumbs_text" />
+                <img v-lazy="item.thumbs_text" />
             </div>
             <div class="product-info">
               <p class="title text-ellipsis-2">{{ item.name }}</p>
@@ -73,46 +85,64 @@
 </template>
 
 <script setup>
-  defineOptions({
-    name: 'home'
-  })
+defineOptions({ name: 'home' })
 
-  import {POST} from '@/services/request'
-  import {useRouter} from 'vue-router'
-  import {ref, onBeforeMount} from 'vue'
-  import Menu from '@/components/common/Menu.vue'
+import { POST } from '@/services/request'
+import { useRouter } from 'vue-router'
+import { ref, onBeforeMount } from 'vue'
+import { showFailToast } from 'vant'
+import Menu from '@/components/common/Menu.vue'
+import { getCache, setCache } from '@/utils/cache'
 
-  let typelist = ref([])
-  let recommend = ref([])
-  let hots = ref([])
-  let site = ref('精品家居')
-  let keywords = ref('')
+let typelist = ref([])
+let recommend = ref([])
+let hots = ref([])
+let site = ref('精品家居')
+let keywords = ref('')
+const HOME_CACHE_KEY = 'home:index:data'
+const HOME_CACHE_TTL = 5 * 60 * 1000
 
-  const router = useRouter()
+const router = useRouter()
 
-  onBeforeMount(async () => {
-    var result = await POST({
-      url: '/index/index',
-    })
-    typelist.value = result.data.typelist
-    recommend.value = result.data.recommend
-    hots.value = result.data.hots
-  })
+/** 应用首页数据 */
+const applyHomeData = (data) => {
+  typelist.value = data?.typelist || []
+  recommend.value = data?.recommend || []
+  hots.value = data?.hots || []
+}
 
-  const search = async (value) => {
+onBeforeMount(async () => {
+  const cachedData = getCache(HOME_CACHE_KEY)
+  if (cachedData) { applyHomeData(cachedData); return }
+
+  try {
+    var result = await POST({ url: '/index/index' })
+    const data = result.data || {}
+    applyHomeData(data)
+    setCache(HOME_CACHE_KEY, data, HOME_CACHE_TTL)
+  } catch (error) {
+    showFailToast('首页数据加载失败，请稍后重试')
+  }
+})
+
+/** 搜索跳转 */
+const search = async (value) => {
     keywords.value = value
-    var result = await POST({
-      url: '/index/index',
-      params: {
-        keywords: keywords.value
-      }
-    })
-    router.push({
-      path: '/product/list',
-      query: {
-        typeid: result.data.search.id
-      }
-    })
+    try {
+      var result = await POST({
+        url: '/index/index',
+        params: {
+          keywords: keywords.value
+        }
+      })
+      const searchTypeId = result.data?.search?.id
+      router.push({
+        path: '/product/list',
+        query: searchTypeId ? { typeid: searchTypeId } : {}
+      })
+    } catch (error) {
+      showFailToast('搜索失败，请稍后重试')
+    }
   }
 </script>
 

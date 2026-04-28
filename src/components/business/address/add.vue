@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 新增地址组件
+  @module components/business/address/add
+  @description 负责收货地址的新增表单录入与提交，支持设置默认地址，
+               使用 Vant AddressEdit 组件提供省市区选择功能
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /business/address/add (需要登录)
+  <router-link to="/business/address/add">新增地址</router-link>
+-->
 <template>
   <div class="address-add-page">
     <van-nav-bar
@@ -11,6 +22,7 @@
       <van-address-edit
         :area-list="areaList"
         show-set-default
+        :is-saving="saving"
         :area-columns-placeholder="['请选择省', '请选择市', '请选择区']"
         @save="save"
         class="custom-address-edit"
@@ -53,7 +65,8 @@
   padding: 32px 16px;
 }
 
-:deep(.van-button--danger) {
+:deep(.van-button--danger),
+:deep(.van-button--primary) {
   background: var(--primary-gradient);
   border: none;
   height: 46px;
@@ -68,45 +81,46 @@
 </style>
 
 <script setup>
-  import {useRouter} from 'vue-router'
-  import { areaList } from '@vant/area-data'
-  import { useCookies } from "vue3-cookies";
-  import {POST} from '@/services/request'
-  import {showSuccessToast, showFailToast} from 'vant'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { areaList } from '@vant/area-data'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { isBizFail } from '@/utils/result'
 
-  const {cookies} = useCookies()
-  const router = useRouter()
-  var business = cookies.get('business') ? cookies.get('business') : {};
+const userStore = useUserStore()
+const router = useRouter()
+var business = userStore.userInfo || {}
+const saving = ref(false)
 
-  const back = () => {
-    router.go(-1)
+const back = () => { router.go(-1) }
+
+/** 保存新地址 */
+const save = async (info) => {
+  if (saving.value) return false
+  var data = {
+    busid: business.id,
+    consignee: info.name,
+    mobile: info.tel,
+    address: info.addressDetail,
+    code: info.areaCode,
+    status: info.isDefault
   }
 
-  const save = async (info) => {
-    var data = {
-      busid: business.id,
-      consignee: info.name,
-      mobile: info.tel,
-      address: info.addressDetail,
-      code: info.areaCode,
-      status: info.isDefault
-    }
-
-    var result = await POST({
-      url: '/address/add',
-      params: data
-    })
-
-    if(result.code == 0) {
-      showFailToast(result.msg)
-      return false
-    }
+  saving.value = true
+  try {
+    var result = await POST({ url: '/address/add', params: data })
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     showSuccessToast({
       message: result.msg,
-      onClose: () => {
-        router.go(-1)
-      }
+      onClose: () => { router.go(-1) }
     })
+  } catch (error) {
+    showFailToast('保存地址失败，请稍后重试')
+  } finally {
+    saving.value = false
   }
+}
 </script>

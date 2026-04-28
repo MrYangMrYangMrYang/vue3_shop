@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 编辑地址组件
+  @module components/business/address/edit
+  @description 负责收货地址的详情回显、修改提交及地址删除操作，
+               支持默认地址设置，通过路由参数 id 获取待编辑地址
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /business/address/edit?id=123 (需要登录)
+  <router-link :to="{ path: '/business/address/edit', query: { id: 123 } }">编辑地址</router-link>
+-->
 <template>
   <div class="address-edit-page">
     <van-nav-bar
@@ -13,6 +24,8 @@
         :address-info="address"
         show-set-default
         show-delete
+        :is-saving="saving"
+        :is-deleting="deleting"
         :area-columns-placeholder="['请选择省', '请选择市', '请选择区']"
         @save="save"
         @delete="del"
@@ -76,80 +89,93 @@
 </style>
 
 <script setup>
-  import {useRouter, useRoute} from 'vue-router'
-  import {reactive, ref, onBeforeMount} from 'vue'
-  import { areaList } from '@vant/area-data'
-  import { useCookies } from "vue3-cookies";
-  import {POST} from '@/services/request'
-  import {showSuccessToast, showFailToast, showConfirmDialog} from 'vant'
+import { useRouter, useRoute } from 'vue-router'
+import { reactive, ref, onBeforeMount } from 'vue'
+import { areaList } from '@vant/area-data'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
 
-  const {cookies} = useCookies()
-  const router = useRouter()
-  const route = useRoute()
+const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
 
-  var addrid = route.query.hasOwnProperty('id') ? route.query.id : 0;
-  var business = cookies.get('business') ? cookies.get('business') : {};
+var addrid = getRouteQueryValue(route.query, 'id', 0)
+var business = userStore.userInfo || {}
+const saving = ref(false)
+const deleting = ref(false)
 
-  const address = reactive({})
+const address = reactive({})
 
-  const back = () => {
-    router.go(-1)
-  }
+const back = () => { router.go(-1) }
 
-  const info = async () => {
+/** 加载地址详情 */
+const info = async () => {
+  try {
     var data = { busid: business.id, id: addrid }
     var result = await POST({ url: '/address/info', params: data })
-
-    if(result.code == 0) {
-      showFailToast(result.msg)
-      return false
-    }
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     address.name = result.data.consignee
     address.tel = result.data.mobile
     address.addressDetail = result.data.address
     address.isDefault = result.data.status == '1' ? true : false
     address.areaCode = result.data.district || result.data.city || result.data.province
+  } catch (error) {
+    showFailToast('地址信息加载失败，请稍后重试')
+  }
+}
+
+/** 保存修改 */
+const save = async (info) => {
+  if (saving.value) return false
+  var data = {
+    id: addrid,
+    busid: business.id,
+    consignee: info.name,
+    mobile: info.tel,
+    address: info.addressDetail,
+    code: info.areaCode,
+    status: info.isDefault
   }
 
-  const save = async (info) => {
-    var data = {
-      id: addrid,
-      busid: business.id,
-      consignee: info.name,
-      mobile: info.tel,
-      address: info.addressDetail,
-      code: info.areaCode,
-      status: info.isDefault
-    }
-
+  saving.value = true
+  try {
     var result = await POST({ url: '/address/edit', params: data })
-
-    if(result.code == 0) {
-      showFailToast(result.msg)
-      return false
-    }
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     showSuccessToast({
       message: result.msg,
       onClose: () => { router.go(-1) }
     })
+  } catch (error) {
+    showFailToast('地址保存失败，请稍后重试')
+  } finally {
+    saving.value = false
   }
+}
 
-  const del = async () => {
-    showConfirmDialog({
-      title: '删除提醒',
-      message: '是否确认删除地址',
-    })
-    .then(async () => {
-      var result = await POST({
-        url: '/address/del',
-        params: { id: addrid, busid: business.id }
-      })
-      if(result.code != 0) { router.go(-1) }
-    })
-    .catch(() => {})
-  }
+/** 删除地址 */
+const del = async () => {
+  if (deleting.value) return
+  showConfirmDialog({
+    title: '删除提醒',
+    message: '是否确认删除地址',
+    confirmButtonColor: '#FF464E'
+  }).then(async () => {
+    deleting.value = true
+    try {
+      var result = await POST({ url: '/address/del', params: { id: addrid, busid: business.id } })
+      if (!isBizFail(result)) router.go(-1)
+    } catch (error) {
+      showFailToast('删除失败，请稍后重试')
+    } finally {
+      deleting.value = false
+    }
+  }).catch(() => {})
+}
 
-  onBeforeMount(() => { info() })
+onBeforeMount(() => { info() })
 </script>

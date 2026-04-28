@@ -1,3 +1,15 @@
+<!-- 
+  @fileoverview 商品搜索结果列表组件
+  @module components/product/list
+  @description 负责根据关键词搜索并展示商品列表，支持多维度排序（销量、价格、库存等），
+               支持分类筛选、新品/热销/推荐标签过滤，提供下拉刷新与上拉加载更多功能
+  @requires services/request
+  @requires utils/cache
+  @example
+  // 路由配置: /product/list
+  // 分类筛选: ?typeid=1, 搜索: ?keywords=手机
+  <router-link to="/product/list">商品列表</router-link>
+-->
 <template>
   <div class="list-page">
     <van-sticky>
@@ -41,7 +53,7 @@
           <li v-for="item in list" :key="item.id" class="product-item">
             <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="product-link">
               <div class="img-wrapper">
-                <img :src="item.thumbs_text" />
+                <img v-lazy="item.thumbs_text" />
               </div>
               <div class="product-content">
                 <p class="title">{{item.name}}</p>
@@ -74,10 +86,16 @@
 </template>
 
 <script setup>
+// 商品列表页：
+// 负责分类筛选、搜索、分页加载、返回态恢复与列表状态缓存。
 import { useRouter, useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated } from 'vue'
 import { POST } from '@/services/request'
+import { showFailToast } from 'vant'
 import Menu from '@/components/common/Menu.vue'
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
+import { getCache, setCache } from '@/utils/cache'
 
 defineOptions({
   name: 'product-list'
@@ -86,7 +104,12 @@ defineOptions({
 const router = useRouter()
 const route = useRoute()
 
-let TypeActive = ref(route.query.typeid ? parseInt(route.query.typeid) : 0);
+const parseTypeId = (value) => {
+  const parsed = parseInt(value, 10)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+let TypeActive = ref(parseTypeId(getRouteQueryValue(route.query, 'typeid', 0)))
 let list = ref([])
 let loading = ref(false)
 let finished = ref(false)
@@ -101,6 +124,7 @@ let keywords = ref('')
 let isFirstLoad = ref(true)
 let isLoading = ref(false)
 let isFromDetail = ref(false)
+const LIST_STATE_CACHE_KEY = 'product:list:view-state'
 
 let FlagList = [
   { text: '全部商品', value: '0' },
@@ -112,6 +136,8 @@ let FlagList = [
 let TypeList = ref([
   { text: '全部分类', value: 0 }
 ]);
+const TYPE_CACHE_KEY = 'product:type:list'
+const TYPE_CACHE_TTL = 5 * 60 * 1000
 
 let SortList = [
   { text: '上架时间', value: 'createtime' },
@@ -168,6 +194,34 @@ const back = () => {
   router.go(-1)
 }
 
+const restoreListState = () => {
+  const cached = getCache(LIST_STATE_CACHE_KEY)
+  if (!cached || typeof cached !== 'object') return false
+  TypeActive.value = parseTypeId(cached.typeActive)
+  FlagActive.value = cached.flagActive || '0'
+  SortActive.value = cached.sortActive || 'createtime'
+  ByActive.value = cached.byActive || 'desc'
+  keywords.value = cached.keywords || ''
+  page.value = Number(cached.page) || 1
+  finished.value = Boolean(cached.finished)
+  list.value = Array.isArray(cached.list) ? cached.list : []
+  return list.value.length > 0
+}
+
+const saveListState = () => {
+  setCache(LIST_STATE_CACHE_KEY, {
+    typeActive: TypeActive.value,
+    flagActive: FlagActive.value,
+    sortActive: SortActive.value,
+    byActive: ByActive.value,
+    keywords: keywords.value,
+    page: page.value,
+    finished: finished.value,
+    list: list.value,
+    scrollTop: window.scrollY || 0
+  }, 10 * 60 * 1000)
+}
+
 const refresh = async () => {
   if (isLoading.value) return
 
@@ -211,27 +265,35 @@ const ListData = async () => {
     })
 
     loading.value = false
-    TypeName.value = result.data.TypeName
+    const data = result.data || {}
+    TypeName.value = data.TypeName || '全部商品'
 
-    if (result.code == 0 || !result.data.list || result.data.list.length <= 0) {
+    if (isBizFail(result) || !data.list || data.list.length <= 0) {
       finished.value = true;
     } else {
       if (page.value === 1) {
-        list.value = result.data.list
+        list.value = data.list
       } else {
-        list.value = list.value.concat(result.data.list)
+        list.value = list.value.concat(data.list)
       }
       page.value++
+      saveListState()
     }
   } catch (error) {
-    console.error('请求失败:', error)
     loading.value = false
+    showFailToast('商品列表加载失败，请稍后重试')
   } finally {
     isLoading.value = false
   }
 }
 
 const type = async () => {
+  const cachedTypeList = getCache(TYPE_CACHE_KEY)
+  if (cachedTypeList && Array.isArray(cachedTypeList) && cachedTypeList.length) {
+    TypeList.value = cachedTypeList
+    return
+  }
+
   try {
     var result = await POST({
       url: '/index/type'
@@ -241,7 +303,7 @@ const type = async () => {
       { text: '全部分类', value: 0 }
     ];
 
-    if (result.data && result.data.length) {
+    if (Array.isArray(result.data) && result.data.length) {
       for (var item of result.data) {
         TypeList.value.push({
           text: item.name,
@@ -249,22 +311,28 @@ const type = async () => {
         })
       }
     }
+    setCache(TYPE_CACHE_KEY, TypeList.value, TYPE_CACHE_TTL)
   } catch (error) {
-    console.error('获取分类失败:', error)
+    showFailToast('分类加载失败，请稍后重试')
   }
 }
 
 watch(() => route.query.typeid, (newTypeId, oldTypeId) => {
   if (newTypeId !== oldTypeId && !isFirstLoad.value) {
-    TypeActive.value = newTypeId ? parseInt(newTypeId) : 0
+    TypeActive.value = parseTypeId(newTypeId)
     isFromDetail.value = false
     refresh()
   }
 })
 
 onActivated(() => {
-  if (isFromDetail.value) {
-    refresh()
+  if (isFromDetail.value && restoreListState()) {
+    nextTick(() => {
+      const cached = getCache(LIST_STATE_CACHE_KEY)
+      const scrollTop = Number(cached?.scrollTop || 0)
+      window.scrollTo(0, scrollTop)
+    })
+    isFromDetail.value = false
   }
 })
 
@@ -274,13 +342,14 @@ onBeforeRouteUpdate((to, from) => {
   }
 
   if (to.query.typeid !== from.query.typeid) {
-    TypeActive.value = to.query.typeid ? parseInt(to.query.typeid) : 0
+    TypeActive.value = parseTypeId(to.query.typeid)
     isFromDetail.value = false
     refresh()
   }
 })
 
 onBeforeUnmount(() => {
+  saveListState()
   loading.value = false
   finished.value = true
   refreshing.value = false
@@ -290,7 +359,14 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   await type()
   isFirstLoad.value = false
+  const restored = restoreListState()
   await nextTick()
+  if (restored) {
+    const cached = getCache(LIST_STATE_CACHE_KEY)
+    const scrollTop = Number(cached?.scrollTop || 0)
+    window.scrollTo(0, scrollTop)
+    return
+  }
   await refresh()
 })
 </script>

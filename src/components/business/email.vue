@@ -1,3 +1,14 @@
+<!-- 
+  @fileoverview 邮箱验证组件
+  @module components/business/email
+  @description 负责用户邮箱真实性验证：提供验证码发送与校验功能，确保账号安全，
+               是账号安全体系的重要组成部分
+  @requires stores/user
+  @requires services/request
+  @example
+  // 路由配置: /business/email (需要登录)
+  <router-link to="/business/email">邮箱认证</router-link>
+-->
 <template>
   <div class="email-verify-page">
     <van-nav-bar
@@ -37,21 +48,23 @@
               placeholder="请输入验证码"
             >
               <template #button>
-                <van-button 
-                  size="small" 
-                  type="primary" 
-                  @click="send" 
-                  :disabled="click"
-                  class="send-btn"
+                <span 
+                  class="send-link" 
+                  @click="send"
+                  v-if="!click && !sendingCode"
                 >
-                  {{ content }}
-                </van-button>
+                  发送验证码
+                </span>
+                <span class="send-link disabled" v-else>
+                  <template v-if="sendingCode">发送中...</template>
+                  <template v-else>{{ content }}</template>
+                </span>
               </template>
             </van-field>
           </van-cell-group>
 
           <div class="action-btn">
-            <van-button round block type="primary" native-type="submit">
+            <van-button round block type="primary" native-type="submit" :loading="verifying" :disabled="verifying">
               立即验证
             </van-button>
           </div>
@@ -124,16 +137,25 @@
   color: var(--text-secondary);
 }
 
-.send-btn {
-  background: transparent;
-  border: 1px solid var(--primary-color);
-  color: var(--primary-color);
-  padding: 0 12px;
+/* 新的文字链接样式 */
+.send-link {
+  color: var( --primary-color);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 4px 4px;
+  user-select: none;
+  transition: color 0.2s;
 }
 
-.send-btn:disabled {
-  border-color: var(--text-placeholder);
-  color: var(--text-placeholder);
+.send-link:active {
+  opacity: 0.7;
+}
+
+.send-link.disabled {
+  color: var( --primary-color);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .action-btn {
@@ -151,99 +173,77 @@
 </style>
 
 <script setup>
-  import {useRouter} from 'vue-router'
-  import { useCookies } from "vue3-cookies";
-  import {reactive, ref} from 'vue'
-  import {showSuccessToast, showFailToast, showConfirmDialog} from 'vant'
-  import {POST} from '@/services/request'
+import { useRouter } from 'vue-router'
+import { reactive, ref, onBeforeUnmount } from 'vue'
+import { showSuccessToast, showFailToast } from 'vant'
+import { POST } from '@/services/request'
+import { useUserStore } from '@/stores/user'
+import { isBizFail } from '@/utils/result'
 
-  //初始化
-  const {cookies} = useCookies()
-  const router = useRouter()
+const userStore = useUserStore()
+const router = useRouter()
 
-  //获取用户信息
-  var login = cookies.get('business') ? cookies.get('business') : {};
-  // console.log(login)
-  const business = reactive(login)
+var login = userStore.userInfo || {}
+const business = reactive(login)
+const emcode = ref('')
 
-  const emcode = ref('')
+const back = () => { router.go(-1) }
 
-  //返回上一页
-  const back = () =>
-  {
-    router.go(-1)
-  }
+let content = ref('发送验证码')
+let sec = ref(60)
+let T
+let click = ref(false)
+const sendingCode = ref(false)
+const verifying = ref(false)
 
-  let content = ref('发送验证码')
-  let sec = ref(60)
-  let T
-  let click = ref(false)
+/** 发送邮箱验证码 */
+const send = async () => {
+  if (click.value || sendingCode.value) return false
 
-  const send = async () =>{
-    //发送请求
-    var result = await POST({
-        url: '/business/email',
-        params: {email:business.email}
-    })
+  sendingCode.value = true
+  try {
+    var result = await POST({ url: '/business/email', params: { email: business.email } })
 
-    if(result.code == 0)
-    {
-      showFailToast(result.msg)
-      return false
-    }
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
-    showSuccessToast(result.msg);
+    showSuccessToast(result.msg)
 
-    // 倒计时
     click.value = true
     T = setInterval(() => {
       sec.value--
       content.value = sec.value + 's后可重新发送'
-      if (sec.value <= 0) {
-        clearInterval(T);
-        content.value = '重新发送'
-        sec.value = 60
-        click.value = false
-        }
-    }, 1000);
+      if (sec.value <= 0) { clearInterval(T); content.value = '重新发送'; sec.value = 60; click.value = false }
+    }, 1000)
+  } catch (error) {
+    showFailToast('发送失败，请稍后重试')
+  } finally {
+    sendingCode.value = false
   }
+}
 
-  //表单提交
-  const email = async (values) =>{
+/** 提交验证码 */
+const email = async (values) => {
+  if (verifying.value) return false
 
-    console.log(values);
+  var data = { email: values.email, code: values.code, id: business.id }
 
-    //组装数据
-    var data = {
-      email:values.email,
-      code:values.code,
-      id:business.id
-    }
-
-    //发起请求
-    var result = await POST({
-      url: '/business/emailcheck',
-      params: data
-    })
-
-    if(result.code == 0)
-    {
-      showFailToast(result.msg)
-      return false
-    }
+  verifying.value = true
+  try {
+    var result = await POST({ url: '/business/emailcheck', params: data })
+    if (isBizFail(result)) { showFailToast(result.msg); return false }
 
     showSuccessToast({
-        message: result.msg,
-        onClose: () => 
-        {
-          //跳转
-          router.go(-1)
-        }
+      message: result.msg,
+      onClose: () => { router.go(-1) }
     })
-
-    return false
-
+  } catch (error) {
+    showFailToast('验证失败，请稍后重试')
+  } finally {
+    verifying.value = false
   }
 
-    
+  return false
+}
+
+onBeforeUnmount(() => { if (T) clearInterval(T) })
 </script>
