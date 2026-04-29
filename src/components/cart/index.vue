@@ -164,6 +164,7 @@
   line-height: 1.5;
   margin-bottom: 6px;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -319,7 +320,7 @@ import { ref, onBeforeMount, computed, watch } from 'vue'
 import Menu from '@/components/common/Menu.vue'
 import { POST } from '@/services/request'
 import axios from 'axios'
-import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { showFailToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
@@ -406,7 +407,7 @@ const getCartTotal = (cart) => {
 }
 
 /** 修改商品数量 */
-const CartStep = async (value, detail) => {
+const CartStep = async (_value, detail) => {
   if (mutating.value) return
   mutating.value = true
   const data = { busid: busid.value, cartid: detail.name, nums: value }
