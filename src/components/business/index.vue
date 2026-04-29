@@ -16,7 +16,7 @@
       <div class="user-info-card">
         <router-link to="/business/profile" class="user-link">
           <div class="avatar-wrapper">
-            <img :src="userInfo.avatar_text || defaultAvatar" class="avatar" @error="handleAvatarError" />
+            <img :src="displayAvatar" class="avatar" @error="handleAvatarError" />
           </div>
           <div class="user-detail">
             <div class="nickname">{{ displayNickname }}</div>
@@ -139,6 +139,17 @@ const userInfo = reactive(userStore.userInfo || {})
 /** 是否已登录 */
 const isLoggedIn = computed(() => userInfo.id && userInfo.id > 0)
 const maskedMobile = computed(() => maskMobile(userInfo.mobile))
+
+/** 后端默认头像URL特征 */
+const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
+
+/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
+const displayAvatar = computed(() => {
+  const avatar = userInfo.avatar_text
+  if (!avatar) return defaultAvatar
+  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
+  return avatar
+})
 
 /** 智能显示昵称（手机号自动脱敏） */
 const displayNickname = computed(() => {

@@ -362,9 +362,17 @@ const RegionConfirm = ({ selectedOptions }) => {
   business.region_text = region_text
 }
 
-/** 头像预览 */
+/** 头像预览（用户自定义优先，后端默认→替换为前端默认） */
 const defaultAvatar = '/images/tx.png'
-const AvatarPreview = ref([{ url: business.avatar_text || defaultAvatar }])
+const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
+
+const getDisplayAvatar = (url) => {
+  if (!url) return defaultAvatar
+  if (url.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
+  return url
+}
+
+const AvatarPreview = ref([{ url: getDisplayAvatar(business.avatar_text) }])
 
 /** 提交保存 */
 const profile = async (values) => {

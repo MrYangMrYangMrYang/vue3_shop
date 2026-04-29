@@ -29,12 +29,16 @@
             />
             <van-field
               v-model="business.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               name="password"
               label="密码"
               placeholder="请输入密码"
               :rules="rules.password"
-            />
+            >
+              <template #right-icon>
+                <van-icon :name="showPassword ? 'eye-o' : 'closed-eye'" @click="showPassword = !showPassword" class="eye-icon" />
+              </template>
+            </van-field>
           </van-cell-group>
           <div class="btn-wrapper">
             <van-button round block native-type="submit" class="login-btn" :loading="submitting" :disabled="submitting">登 录</van-button>
@@ -61,6 +65,7 @@ import { isBizFail } from '@/utils/result'
 const userStore = useUserStore()
 const router = useRouter()
 const submitting = ref(false)
+const showPassword = ref(false)
 
 /** 已登录则跳转个人中心 */
 onBeforeMount(() => {
@@ -218,6 +223,18 @@ let login = async (values) => {
   font-weight: 600;
 }
 
+.eye-icon {
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.eye-icon:active {
+  color: var(--primary-color);
+}
+</style>
+
+<style>
 :deep(.van-cell-group--inset) {
   margin: 0;
 }

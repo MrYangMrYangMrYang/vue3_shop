@@ -21,7 +21,7 @@
     <div class="verify-container">
       <div class="user-info-section">
         <div class="avatar-wrapper">
-          <img :src="business.avatar_text || '/images/tx.png'" @error="handleAvatarError" />
+          <img :src="displayAvatar" @error="handleAvatarError" />
         </div>
         <div class="tip-text">为了您的账号安全，请完成邮箱验证</div>
       </div>
@@ -31,12 +31,27 @@
           <van-cell-group inset :border="false">
             <!-- 邮箱 -->
             <van-field 
+              v-if="business.email"
               v-model="business.email" 
               name="email" 
               label="邮箱地址" 
               readonly
               class="readonly-field"
             />
+            <van-field
+              v-else
+              name="email"
+              label="邮箱地址"
+              placeholder="您还未绑定邮箱，请先在个人资料中设置"
+              readonly
+              class="no-email-field"
+            >
+              <template #right-icon>
+                <router-link to="/business/profile" class="set-email-link">
+                  去设置
+                </router-link>
+              </template>
+            </van-field>
           
             <!-- 验证码 -->
             <van-field
@@ -152,8 +167,30 @@
   opacity: 0.7;
 }
 
+/* 未设置邮箱时的提示样式 */
+.no-email-field :deep(.van-field__control) {
+  color: #999;
+  font-size: 13px;
+}
+
+.set-email-link {
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 4px 12px;
+  background: rgba(255, 70, 78, 0.1);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.set-email-link:active {
+  background: rgba(255, 70, 78, 0.2);
+}
+
 .send-link.disabled {
-  color: var( --primary-color);
+  color: var(--primary-color);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -174,7 +211,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { reactive, ref, onBeforeUnmount } from 'vue'
+import { reactive, ref, computed, onBeforeUnmount } from 'vue'
 import { showSuccessToast, showFailToast } from 'vant'
 import { POST } from '@/services/request'
 import { useUserStore } from '@/stores/user'
@@ -189,8 +226,22 @@ const emcode = ref('')
 
 const back = () => { router.go(-1) }
 
+/** 前端默认头像 */
+const defaultAvatar = '/images/tx.png'
+
+/** 后端默认头像URL特征 */
+const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
+
+/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
+const displayAvatar = computed(() => {
+  const avatar = business.avatar_text
+  if (!avatar) return defaultAvatar
+  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
+  return avatar
+})
+
 /** 头像加载失败处理 */
-const handleAvatarError = (e) => { e.target.src = '/images/tx.png' }
+const handleAvatarError = (e) => { e.target.src = defaultAvatar }
 
 let content = ref('发送验证码')
 let sec = ref(60)

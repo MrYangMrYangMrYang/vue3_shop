@@ -31,13 +31,17 @@
 
             <van-field
               v-model="business.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               name="password"
               label="密码"
               placeholder="请输入密码"
               :rules="rules.password"
               left-icon="lock"
-            />
+            >
+              <template #right-icon>
+                <van-icon :name="showPassword ? 'eye-o' : 'closed-eye'" @click="showPassword = !showPassword" class="eye-icon" />
+              </template>
+            </van-field>
           </van-cell-group>
 
           <div class="action-btn">
@@ -126,6 +130,16 @@
 :deep(.van-cell-group--inset) {
   margin: 0;
 }
+
+.eye-icon {
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.eye-icon:active {
+  color: var(--primary-color);
+}
 </style>
 
 <script setup>
@@ -138,6 +152,7 @@ import { isBizFail } from '@/utils/result'
 
 const userStore = useUserStore()
 const submitting = ref(false)
+const showPassword = ref(false)
 const router = useRouter()
 
 /** 已登录则跳转个人中心 */
