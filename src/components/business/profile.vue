@@ -363,7 +363,8 @@ const RegionConfirm = ({ selectedOptions }) => {
 }
 
 /** 头像预览 */
-const AvatarPreview = ref([{ url: business.avatar_text }])
+const defaultAvatar = '/images/tx.png'
+const AvatarPreview = ref([{ url: business.avatar_text || defaultAvatar }])
 
 /** 提交保存 */
 const profile = async (values) => {

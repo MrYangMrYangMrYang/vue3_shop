@@ -19,7 +19,7 @@
             <img :src="userInfo.avatar_text || defaultAvatar" class="avatar" @error="handleAvatarError" />
           </div>
           <div class="user-detail">
-            <div class="nickname">{{ userInfo.nickname || (isLoggedIn ? '未设置昵称' : '点击登录') }}</div>
+            <div class="nickname">{{ displayNickname }}</div>
             <div class="mobile">{{ maskedMobile || (isLoggedIn ? '暂无手机号' : '登录后体验更多功能') }}</div>
           </div>
           <van-icon name="arrow" color="rgba(255,255,255,0.7)" />
@@ -139,6 +139,14 @@ const userInfo = reactive(userStore.userInfo || {})
 /** 是否已登录 */
 const isLoggedIn = computed(() => userInfo.id && userInfo.id > 0)
 const maskedMobile = computed(() => maskMobile(userInfo.mobile))
+
+/** 智能显示昵称（手机号自动脱敏） */
+const displayNickname = computed(() => {
+  const nick = userInfo.nickname
+  if (!nick) return isLoggedIn.value ? '未设置昵称' : '点击登录'
+  if (/^1\d{10}$/.test(nick)) return `${nick.slice(0, 3)}****${nick.slice(7)}`
+  return nick
+})
 
 /** 手机号脱敏 */
 const maskMobile = (mobile) => {

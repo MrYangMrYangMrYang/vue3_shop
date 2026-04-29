@@ -21,7 +21,7 @@
     <div class="verify-container">
       <div class="user-info-section">
         <div class="avatar-wrapper">
-          <img :src="business.avatar_text" />
+          <img :src="business.avatar_text || '/images/tx.png'" @error="handleAvatarError" />
         </div>
         <div class="tip-text">为了您的账号安全，请完成邮箱验证</div>
       </div>
@@ -188,6 +188,9 @@ const business = reactive(login)
 const emcode = ref('')
 
 const back = () => { router.go(-1) }
+
+/** 头像加载失败处理 */
+const handleAvatarError = (e) => { e.target.src = '/images/tx.png' }
 
 let content = ref('发送验证码')
 let sec = ref(60)
