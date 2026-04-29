@@ -231,17 +231,18 @@
   font-weight: 500;
 }
 
-/* ========== 提交栏 - 与 TabBar 同宽 ========== */
+/* ========== 提交栏 - 紧贴 TabBar ========== */
 .submit-bar {
-  bottom: 60px !important;
+  position: fixed !important;
+  bottom: 50px !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
   border-radius: 0 !important;
-  overflow: hidden;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
   background: rgba(255, 255, 255, 0.96) !important;
   transition: all var(--transition-fast);
-  width: 100% !important;
-  left: 0 !important;
-  right: 0 !important;
+  z-index: 99;
 }
 
 :deep(.van-submit-bar__bar) {
@@ -287,12 +288,19 @@
   font-size: 14px;
 }
 
-/* 底部 TabBar 样式 */
+/* 底部 TabBar 样式 - 紧贴结算栏 */
 :deep(.van-tabbar) {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
   background: rgba(255, 255, 255, 0.96) !important;
   border-top: none;
-  height: 56px;
+  height: 50px;
+  z-index: 100;
 }
 
 .go-shop-btn {
