@@ -133,7 +133,7 @@ import { reactive, computed } from 'vue'
 const userStore = useUserStore()
 const router = useRouter()
 
-const defaultAvatar = '/images/default-avatar.png'
+const defaultAvatar = '/images/tx.png'
 const userInfo = reactive(userStore.userInfo || {})
 
 /** 是否已登录 */
