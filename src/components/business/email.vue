@@ -216,6 +216,7 @@ import { showSuccessToast, showFailToast } from 'vant'
 import { POST } from '@/services/request'
 import { useUserStore } from '@/stores/user'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -224,7 +225,7 @@ var login = userStore.userInfo || {}
 const business = reactive(login)
 const emcode = ref('')
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 前端默认头像 */
 const defaultAvatar = '/images/tx.png'

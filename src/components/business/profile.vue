@@ -291,6 +291,7 @@ import { reactive, ref } from 'vue'
 import { areaList } from '@vant/area-data'
 import { POST, UPLOAD } from '@/services/request'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -323,7 +324,7 @@ const maskMobile = (mobile) => {
 }
 const maskedMobile = maskMobile(business.mobile)
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 表单验证规则 */
 let rules = reactive({

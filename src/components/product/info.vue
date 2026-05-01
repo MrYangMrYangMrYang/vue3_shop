@@ -96,6 +96,7 @@ import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const router = useRouter()
 const route = useRoute()
@@ -130,7 +131,7 @@ const options = [
 
 onBeforeMount(async () => { await ProductInfo() })
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 加载商品详情 */
 const ProductInfo = async () => {

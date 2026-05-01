@@ -266,6 +266,7 @@ import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
 import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { ORDER_STATUS, getOrderStatusClass } from '@/constants/order'
+import { useBack } from '@/hooks'
 
   const userStore = useUserStore()
   const cartStore = useCartStore()
@@ -298,7 +299,7 @@ const backbuy = async () => {
   router.go(-1)
 }
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 跳转新增地址 */
 const AddressAdd = () => { router.push('/business/address/add') }

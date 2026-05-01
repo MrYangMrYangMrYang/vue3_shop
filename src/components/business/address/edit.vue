@@ -97,6 +97,7 @@ import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '@/stores/user'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -109,7 +110,7 @@ const deleting = ref(false)
 
 const address = reactive({})
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 加载地址详情 */
 const info = async () => {

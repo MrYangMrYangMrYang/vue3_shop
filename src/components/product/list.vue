@@ -96,6 +96,7 @@ import Menu from '@/components/common/Menu.vue'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
+import { useBack } from '@/hooks'
 
 defineOptions({
   name: 'product-list'
@@ -103,6 +104,7 @@ defineOptions({
 
 const router = useRouter()
 const route = useRoute()
+const back = useBack()
 
 const parseTypeId = (value) => {
   const parsed = parseInt(value, 10)
@@ -188,10 +190,6 @@ const search = async (value) => {
   keywords.value = value
   isFromDetail.value = false
   await refresh()
-}
-
-const back = () => {
-  router.go(-1)
 }
 
 const restoreListState = () => {

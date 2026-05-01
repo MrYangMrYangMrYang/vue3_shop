@@ -440,13 +440,16 @@ import {
 import { formatCurrency } from '@/utils/currency'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
-import { getRemainingTime, isPaymentExpired, formatCountdown } from '@/utils/countdown'
+import { getRemainingTime, isPaymentExpired } from '@/utils/countdown'
+import { useCountdown, useBack } from '@/hooks'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const pendingPaymentStore = usePendingPaymentStore()
 const completedLocalOrdersStore = useCompletedLocalOrdersStore()
+
+const back = useBack()
 
 const login = userStore.userInfo || {}
 const busid = login.hasOwnProperty('id') ? login.id : 0
@@ -458,37 +461,12 @@ const finished = ref(false)
 const refreshing = ref(false)
 const actionLoading = ref(false)
 const disappearingOrderIds = ref(new Set())
-const countdownMap = ref({})
+const { countdownMap, startCountdown, stopCountdown } = useCountdown(() => list.value, isPendingPayment)
 let page = ref(1)
-let countdownTimer = null
 const ORDER_LIST_CACHE_KEY = 'order:list:view-state'
 const finishedText = computed(() => (list.value.length === 0 ? '' : '没有更多订单了'))
 
 const formatAmount = (amount) => formatCurrency(amount)
-
-/** 启动倒计时（每秒更新待支付订单） */
-const startCountdown = () => {
-  stopCountdown()
-  const tick = () => {
-    const map = {}
-    let hasPendingPayment = false
-    list.value.forEach(order => {
-      if (isPendingPayment(order.status) && !isPaymentExpired(order.createtime)) {
-        hasPendingPayment = true
-        const remaining = getRemainingTime(order.createtime)
-        map[order.id] = formatCountdown(remaining)
-      }
-    })
-    countdownMap.value = map
-    if (hasPendingPayment) countdownTimer = setTimeout(tick, 1000)
-  }
-  tick()
-}
-
-/** 停止倒计时 */
-const stopCountdown = () => {
-  if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null }
-}
 
 /** 恢复列表状态缓存 */
 const restoreOrderListState = () => {
@@ -512,8 +490,6 @@ const saveOrderListState = () => {
     scrollTop: window.scrollY || 0
   }, 10 * 60 * 1000)
 }
-
-const back = () => { router.go(-1) }
 
 /** Tab切换时重新加载 */
 const TabChange = (name, title) => {

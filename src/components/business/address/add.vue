@@ -88,13 +88,14 @@ import { POST } from '@/services/request'
 import { showSuccessToast, showFailToast } from 'vant'
 import { useUserStore } from '@/stores/user'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const userStore = useUserStore()
 const router = useRouter()
 var business = userStore.userInfo || {}
 const saving = ref(false)
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 保存新地址 */
 const save = async (info) => {

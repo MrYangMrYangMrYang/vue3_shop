@@ -326,10 +326,12 @@ import { useCartStore } from '@/stores/cart'
 import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
 import { normalizeIdList } from '@/utils/params'
 import { isBizSuccess, isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const router = useRouter()
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const back = useBack()
 
 /** 用户ID */
 const busid = computed(() => {
@@ -341,8 +343,6 @@ const cartlist = ref([])
 const checked = ref([])
 const toggle = ref(false)
 const mutating = ref(false)
-
-const back = () => { router.go(-1) }
 
 /** 跳转商品详情 */
 const goToProduct = (productId) => {

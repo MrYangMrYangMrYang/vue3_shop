@@ -287,6 +287,7 @@ import { POST } from '@/services/request'
 import { showSuccessToast, showFailToast } from 'vant'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -303,7 +304,7 @@ const fromCartids = getRouteQueryValue(route.query, 'cartids', '')
 const fromCheckoutAction = getRouteQueryValue(route.query, 'checkout_action', '')
 const actionType = ref(action)
 
-const back = () => { router.go(-1) }
+const back = useBack()
 
 /** 新增地址（最多10个） */
 const add = () => {
