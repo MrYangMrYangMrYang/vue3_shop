@@ -343,6 +343,7 @@ const GenderList = ref([
   { text: '女', value: '2' },
 ])
 
+/** 性别确认选择 */
 const GenderConfirm = ({ selectedOptions }) => {
   GenderShow.value = false
   business.gender = selectedOptions[0].value
@@ -352,6 +353,7 @@ const GenderConfirm = ({ selectedOptions }) => {
 /** 地区选择 */
 const RegionShow = ref(false)
 
+/** 地区确认选择 */
 const RegionConfirm = ({ selectedOptions }) => {
   RegionShow.value = false
   const [province, city, district] = selectedOptions
@@ -367,12 +369,14 @@ const RegionConfirm = ({ selectedOptions }) => {
 const defaultAvatar = '/images/tx.png'
 const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
 
+/** 获取展示头像（自定义优先，后端默认替换为前端默认） */
 const getDisplayAvatar = (url) => {
   if (!url) return defaultAvatar
   if (url.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
   return url
 }
 
+/** 头像预览列表 */
 const AvatarPreview = ref([{ url: getDisplayAvatar(business.avatar_text) }])
 
 /** 提交保存 */

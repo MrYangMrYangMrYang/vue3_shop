@@ -398,6 +398,7 @@ const price = computed(() => {
   return toFen(sum)
 })
 
+/** 格式化金额显示 */
 const formatAmount = (amount) => formatCurrency(amount)
 
 /** 计算单件商品小计 */

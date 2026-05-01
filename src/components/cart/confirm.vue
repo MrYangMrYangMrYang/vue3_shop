@@ -290,9 +290,10 @@ const busid = computed(() => {
   const submitting = ref(false)
   let action = getRouteQueryValue(route.query, 'action', '')
   let address = reactive([])
-  const formatAmount = (amount) => formatCurrency(amount)
+  /** 格式化金额显示 */
+const formatAmount = (amount) => formatCurrency(amount)
 
-/** 立即购买返回处理 */
+/** 返回并清除临时购物车记录 */
 const backbuy = async () => {
   var result = await POST({ url: "/cart/delbuy", params: { cartid: cartids, busid: busid.value } })
   if (isBizFail(result)) { showFailToast(result.msg); router.go(-1) }

@@ -466,6 +466,7 @@ let page = ref(1)
 const ORDER_LIST_CACHE_KEY = 'order:list:view-state'
 const finishedText = computed(() => (list.value.length === 0 ? '' : '没有更多订单了'))
 
+/** 格式化金额显示 */
 const formatAmount = (amount) => formatCurrency(amount)
 
 /** 恢复列表状态缓存 */
@@ -801,6 +802,7 @@ const confirmReceive = (orderid) => {
   })
 }
 
+/** 申请售后 */
 const applyAfterSale = (orderid) => {
   executeAction({
     url: '/order/depot',

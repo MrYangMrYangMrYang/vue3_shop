@@ -88,7 +88,7 @@
 <script setup>
 // 商品列表页：
 // 负责分类筛选、搜索、分页加载、返回态恢复与列表状态缓存。
-import { useRouter, useRoute, onBeforeRouteUpdate } from 'vue-router'
+import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated } from 'vue'
 import { POST } from '@/services/request'
 import { showFailToast } from 'vant'
@@ -102,10 +102,10 @@ defineOptions({
   name: 'product-list'
 })
 
-const router = useRouter()
 const route = useRoute()
 const back = useBack()
 
+/** 解析分类ID，无效值返回0 */
 const parseTypeId = (value) => {
   const parsed = parseInt(value, 10)
   return Number.isNaN(parsed) ? 0 : parsed
@@ -152,30 +152,35 @@ let ByList = [
   { text: '升序', value: 'asc' },
 ];
 
+/** 切换分类并刷新列表 */
 const TypeToggle = async (value) => {
   TypeActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
+/** 切换标签（新品/热销/推荐）并刷新列表 */
 const FlagToggle = async (value) => {
   FlagActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
+/** 切换排序字段并刷新列表 */
 const SortToggle = async (value) => {
   SortActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
+/** 切换排序方向（升序/降序）并刷新列表 */
 const ByToggle = async (value) => {
   ByActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
+/** 重置所有筛选条件并刷新列表 */
 const resetFilters = async () => {
   TypeActive.value = 0
   FlagActive.value = '0'
@@ -185,6 +190,7 @@ const resetFilters = async () => {
   await refresh()
 }
 
+/** 搜索商品并刷新列表 */
 const search = async (value) => {
   SearchShow.value = false
   keywords.value = value
@@ -192,6 +198,7 @@ const search = async (value) => {
   await refresh()
 }
 
+/** 从缓存恢复列表状态（筛选条件、分页、数据） */
 const restoreListState = () => {
   const cached = getCache(LIST_STATE_CACHE_KEY)
   if (!cached || typeof cached !== 'object') return false
@@ -206,6 +213,7 @@ const restoreListState = () => {
   return list.value.length > 0
 }
 
+/** 保存列表状态到缓存 */
 const saveListState = () => {
   setCache(LIST_STATE_CACHE_KEY, {
     typeActive: TypeActive.value,
@@ -220,6 +228,7 @@ const saveListState = () => {
   }, 10 * 60 * 1000)
 }
 
+/** 下拉刷新，重置分页并重新加载 */
 const refresh = async () => {
   if (isLoading.value) return
 
@@ -234,6 +243,7 @@ const refresh = async () => {
   isFromDetail.value = false
 }
 
+/** 上拉加载更多数据 */
 const load = async () => {
   if (finished.value || isLoading.value) return
 
@@ -244,6 +254,7 @@ const load = async () => {
   await ListData()
 }
 
+/** 请求商品列表数据 */
 const ListData = async () => {
   if (isLoading.value && page.value > 1) return
 
@@ -285,6 +296,7 @@ const ListData = async () => {
   }
 }
 
+/** 加载商品分类列表（优先读缓存） */
 const type = async () => {
   const cachedTypeList = getCache(TYPE_CACHE_KEY)
   if (cachedTypeList && Array.isArray(cachedTypeList) && cachedTypeList.length) {
@@ -500,6 +512,7 @@ onMounted(async () => {
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 2.8em;

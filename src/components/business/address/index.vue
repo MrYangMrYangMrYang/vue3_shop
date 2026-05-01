@@ -364,12 +364,14 @@ const order = async (item) => {
   }
 }
 
+/** 下单场景：点击地址项 */
 const handleOrderClickItem = async (item) => {
   const selectedItem = item?.id ? item : item?.item
   if (!selectedItem?.id) return
   await order(selectedItem)
 }
 
+/** 下单场景：选择地址按钮 */
 const handleOrderChoose = async (item) => { await order(item) }
 
 /** 加载地址列表 */
