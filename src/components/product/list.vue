@@ -27,7 +27,11 @@
 
         <van-popup v-model:show="SearchShow" position="top" :style="{ height: 'auto' }">
           <div class="search-box">
-            <van-search @search="search" v-model="keywords" placeholder="请输入搜索关键词" shape="round" background="#fff" />
+            <van-search @search="search" @click-action="search(keywords)" v-model="keywords" placeholder="请输入搜索关键词" shape="round" background="#fff" show-action>
+              <template #action>
+                <div class="search-action" @click="search(keywords)">搜索</div>
+              </template>
+            </van-search>
           </div>
         </van-popup>
 
@@ -89,7 +93,7 @@
 // 商品列表页：
 // 负责分类筛选、搜索、分页加载、返回态恢复与列表状态缓存。
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
-import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated, onDeactivated } from 'vue'
 import { POST } from '@/services/request'
 import { showFailToast } from 'vant'
 import Menu from '@/components/common/Menu.vue'
@@ -97,6 +101,7 @@ import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
 import { useBack } from '@/hooks'
+import { debounce } from '@/utils/debounce'
 
 defineOptions({
   name: 'product-list'
@@ -122,10 +127,11 @@ let FlagActive = ref('0')
 let SortActive = ref('createtime')
 let ByActive = ref('desc')
 let SearchShow = ref(false)
-let keywords = ref('')
+let keywords = ref(getRouteQueryValue(route.query, 'keywords', ''))
 let isFirstLoad = ref(true)
 let isLoading = ref(false)
 let isFromDetail = ref(false)
+let lastRouteQuery = {}
 const LIST_STATE_CACHE_KEY = 'product:list:view-state'
 
 let FlagList = [
@@ -155,6 +161,7 @@ let ByList = [
 /** 切换分类并刷新列表 */
 const TypeToggle = async (value) => {
   TypeActive.value = value
+  keywords.value = ''
   isFromDetail.value = false
   await refresh()
 }
@@ -190,13 +197,14 @@ const resetFilters = async () => {
   await refresh()
 }
 
-/** 搜索商品并刷新列表 */
-const search = async (value) => {
+/** 搜索商品并刷新列表（防抖） */
+const search = debounce(async (value) => {
   SearchShow.value = false
   keywords.value = value
+  TypeActive.value = 0
   isFromDetail.value = false
   await refresh()
-}
+}, 300)
 
 /** 从缓存恢复列表状态（筛选条件、分页、数据） */
 const restoreListState = () => {
@@ -335,15 +343,39 @@ watch(() => route.query.typeid, (newTypeId, oldTypeId) => {
   }
 })
 
-onActivated(() => {
-  if (isFromDetail.value && restoreListState()) {
-    nextTick(() => {
-      const cached = getCache(LIST_STATE_CACHE_KEY)
-      const scrollTop = Number(cached?.scrollTop || 0)
-      window.scrollTo(0, scrollTop)
-    })
+watch(() => route.query.keywords, (newKeywords, oldKeywords) => {
+  if (newKeywords !== oldKeywords && !isFirstLoad.value) {
+    keywords.value = newKeywords || ''
     isFromDetail.value = false
+    refresh()
   }
+})
+
+onActivated(() => {
+  const queryChanged = route.query.typeid !== lastRouteQuery.typeid
+    || route.query.keywords !== lastRouteQuery.keywords
+
+  if (!queryChanged) {
+    if (restoreListState()) {
+      nextTick(() => {
+        const cached = getCache(LIST_STATE_CACHE_KEY)
+        const scrollTop = Number(cached?.scrollTop || 0)
+        window.scrollTo(0, scrollTop)
+      })
+    }
+    return
+  }
+
+  const routeKeywords = getRouteQueryValue(route.query, 'keywords', '')
+  const routeTypeId = getRouteQueryValue(route.query, 'typeid', 0)
+  TypeActive.value = parseTypeId(routeTypeId)
+  keywords.value = routeKeywords
+  refresh()
+})
+
+onDeactivated(() => {
+  lastRouteQuery = { ...route.query }
+  saveListState()
 })
 
 onBeforeRouteUpdate((to, from) => {
@@ -351,8 +383,9 @@ onBeforeRouteUpdate((to, from) => {
     isFromDetail.value = true
   }
 
-  if (to.query.typeid !== from.query.typeid) {
+  if (to.query.typeid !== from.query.typeid || to.query.keywords !== from.query.keywords) {
     TypeActive.value = parseTypeId(to.query.typeid)
+    keywords.value = getRouteQueryValue(to.query, 'keywords', '')
     isFromDetail.value = false
     refresh()
   }
@@ -369,6 +402,17 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   await type()
   isFirstLoad.value = false
+
+  const routeKeywords = getRouteQueryValue(route.query, 'keywords', '')
+  const routeTypeId = getRouteQueryValue(route.query, 'typeid', 0)
+
+  if (routeKeywords || routeTypeId) {
+    TypeActive.value = parseTypeId(routeTypeId)
+    keywords.value = routeKeywords
+    await refresh()
+    return
+  }
+
   const restored = restoreListState()
   await nextTick()
   if (restored) {
@@ -455,6 +499,14 @@ onMounted(async () => {
 .search-box {
   padding: 12px 16px;
   background: white;
+}
+
+.search-action {
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 4px;
+  white-space: nowrap;
 }
 
 .product-list {

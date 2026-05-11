@@ -15,11 +15,15 @@
     <div class="topBox">
       <div class="logo">{{ site }}</div>
       <div class="search-wrapper">
-        <van-search @search="search" v-model="keywords" placeholder="搜索商品..." shape="round" background="transparent" />
+        <van-search @search="search" @click-action="search(keywords)" v-model="keywords" placeholder="搜索商品..." shape="round" background="transparent" show-action>
+          <template #action>
+            <div class="search-action" @click="search(keywords)">搜索</div>
+          </template>
+        </van-search>
       </div>
     </div>
 
-    <div class="category-section scroll-mode">
+    <div class="category-section">
       <div class="category-wrapper">
         <router-link to="/product/list" class="category-item">
           <div class="category-icon">
@@ -93,6 +97,7 @@ import { ref, onBeforeMount } from 'vue'
 import { showFailToast } from 'vant'
 import Menu from '@/components/common/Menu.vue'
 import { getCache, setCache } from '@/utils/cache'
+import { debounce } from '@/utils/debounce'
 
 let typelist = ref([])
 let recommend = ref([])
@@ -125,25 +130,28 @@ onBeforeMount(async () => {
   }
 })
 
-/** 搜索跳转 */
-const search = async (value) => {
-    keywords.value = value
-    try {
-      var result = await POST({
-        url: '/index/index',
-        params: {
-          keywords: keywords.value
-        }
-      })
-      const searchTypeId = result.data?.search?.id
-      router.push({
-        path: '/product/list',
-        query: searchTypeId ? { typeid: searchTypeId } : {}
-      })
-    } catch (error) {
-      showFailToast('搜索失败，请稍后重试')
-    }
+/** 搜索跳转（防抖） */
+const search = debounce(async (value) => {
+  if (!value || !value.trim()) return
+  keywords.value = value
+  try {
+    var result = await POST({
+      url: '/index/index',
+      params: {
+        keywords: keywords.value
+      }
+    })
+    const searchTypeId = result.data?.search?.id
+    router.push({
+      path: '/product/list',
+      query: searchTypeId
+        ? { typeid: searchTypeId }
+        : { keywords: keywords.value }
+    })
+  } catch (error) {
+    showFailToast('搜索失败，请稍后重试')
   }
+}, 300)
 </script>
 
 <style scoped>
@@ -194,6 +202,14 @@ const search = async (value) => {
 
 :deep(.van-search__content:focus-within) {
   box-shadow: 0 0 0 2px rgba(255, 70, 78, 0.2);
+}
+
+.search-action {
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 4px;
+  white-space: nowrap;
 }
 
 .aui-m-slider {
@@ -259,7 +275,7 @@ const search = async (value) => {
   display: block;
 }
 
-.category-section.scroll-mode {
+.category-section {
   margin: var(--spacing-md) 0;
   padding: 0 var(--spacing-md);
 }
@@ -297,37 +313,38 @@ const search = async (value) => {
   text-decoration: none;
 }
 
-/* ========== 分类区域 - 横向滑动 ========== */
+/* ========== 分类区域 - 一行四个，横向滑动 ========== */
 .category-wrapper {
   display: flex;
   overflow-x: auto;
   padding: var(--spacing-sm) 0;
-  gap: var(--spacing-lg);
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  gap: 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
 }
 
 .category-wrapper::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
 }
 
 .category-item {
-  flex: 0 0 auto; /* 防止被压缩 */
+  flex: 0 0 25%;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-decoration: none;
   transition: transform var(--transition-fast);
+  scroll-snap-align: start;
 }
 
 .category-item:active {
   transform: scale(0.94);
 }
 
-/* 全部分类和其他分类样式统一 */
 .category-icon {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, rgba(255, 70, 78, 0.08) 0%, rgba(255, 138, 92, 0.08) 100%);
   display: flex;
@@ -350,6 +367,10 @@ const search = async (value) => {
   color: var(--text-secondary);
   text-align: center;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
 }
 
 /* 推荐商品区域 */
