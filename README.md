@@ -6,10 +6,17 @@
   <img src="https://img.shields.io/badge/Vant-4.x-07C160?style=flat-square&logo=vant&logoColor=white" alt="Vant" />
   <img src="https://img.shields.io/badge/Pinia-3.x-F9A825?style=flat-square&logo=pinia&logoColor=white" alt="Pinia" />
   <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" />
+  <a href="http://8.163.98.227:8083" target="_blank">
+    <img src="https://img.shields.io/badge/Preview-Online-green?style=flat-square&logo=google-chrome&logoColor=white" alt="Online Preview" />
+  </a>
 </p>
 
 <p align="center">
   <strong>基于 Vue 3 + Vite + Vant 构建的现代化移动端商城解决方案</strong>
+</p>
+
+<p align="center">
+  <a href="http://8.163.98.227:8083" target="_blank">🌐 在线预览</a>
 </p>
 
 ---
