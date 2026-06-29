@@ -36,34 +36,40 @@
               :rules="rules.password"
             >
               <template #right-icon>
-                <van-icon :name="showPassword ? 'eye-o' : 'closed-eye'" @click="showPassword = !showPassword" class="eye-icon" />
+                <van-icon
+                  :name="showPassword ? 'eye-o' : 'closed-eye'"
+                  @click="showPassword = !showPassword"
+                  class="eye-icon"
+                />
               </template>
             </van-field>
           </van-cell-group>
           <div class="btn-wrapper">
-            <van-button round block native-type="submit" class="login-btn" :loading="submitting" :disabled="submitting">登 录</van-button>
+            <van-button round block native-type="submit" class="login-btn" :loading="submitting" :disabled="submitting">
+              登 录
+            </van-button>
           </div>
         </van-form>
         <div class="login-footer">
-          <router-link to="/register" class="register-link">
-            没有账号？立即注册
-          </router-link>
+          <router-link to="/register" class="register-link">没有账号？立即注册</router-link>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, onBeforeMount, ref } from 'vue'
 import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast } from 'vant'
-import { useRouter } from 'vue-router'
+import { showSuccessToast, showFailToast, type FieldRule } from 'vant'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { isBizFail } from '@/utils/result'
+import { MOBILE_PATTERN, PASSWORD_PATTERN } from '@/utils/validate'
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 const submitting = ref(false)
 const showPassword = ref(false)
 
@@ -73,34 +79,41 @@ onBeforeMount(() => {
 })
 
 /** 登录表单数据 */
-let business = reactive({ mobile: '', password: '' })
+const business = reactive<{ mobile: string; password: string }>({ mobile: '', password: '' })
 
 /** 表单验证规则 */
-let rules = reactive({
+const rules = reactive<Record<string, FieldRule[]>>({
   mobile: [
     { required: true, message: '请输入手机号码' },
-    { pattern: /^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$/, message: '手机号码格式有误' }
+    { pattern: MOBILE_PATTERN, message: '手机号码格式有误' }
   ],
   password: [
     { required: true, message: '请输入密码' },
-    { pattern: /.{6,}/, message: '密码只要6位以上' }
+    { pattern: PASSWORD_PATTERN, message: '密码只要6位以上' }
   ]
 })
 
 /** 提交登录 */
-let login = async (values) => {
+const login = async (values: Record<string, any>): Promise<boolean | void> => {
   if (submitting.value) return false
-  var data = { mobile: values.mobile, password: values.password }
+  const data = { mobile: values.mobile, password: values.password }
 
   submitting.value = true
   try {
-    var result = await POST({ url: 'business/login', params: data })
+    const result = await POST({ url: 'business/login', params: data })
 
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
+    if (isBizFail(result)) {
+      showFailToast(result.msg || '登录失败')
+      return false
+    }
 
     showSuccessToast({
       message: result.msg,
-      onClose: () => { userStore.setUserInfo(result.data); router.push(result.url) }
+      onClose: () => {
+        userStore.setUserInfo(result.data)
+        // 优先回跳来源页（路由守卫 / 401 拦截携带的 redirect），否则用后端返回地址
+        router.push(route.query.redirect || result.url)
+      }
     })
   } catch (error) {
     showFailToast('登录失败，请稍后重试')
@@ -144,8 +157,13 @@ let login = async (values) => {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .avatar {
@@ -241,7 +259,7 @@ let login = async (values) => {
 
 :deep(.van-field) {
   border-radius: 12px;
-  background: #F7F8FA;
+  background: #f7f8fa;
   margin-bottom: 12px;
   padding: 16px;
 }
@@ -256,7 +274,7 @@ let login = async (values) => {
 }
 
 :deep(.van-button--success) {
-  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%);
+  background: linear-gradient(135deg, #ff464e 0%, #ff8a5c 100%);
   border: none;
   box-shadow: 0 4px 16px rgba(255, 70, 78, 0.4);
 }

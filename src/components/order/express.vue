@@ -15,7 +15,6 @@
     </van-sticky>
 
     <div class="express-content">
-      <!-- 物流概览卡片 -->
       <div class="express-card overview-card">
         <div class="company-info">
           <van-icon name="logistics" size="24" class="company-icon" />
@@ -30,7 +29,6 @@
         </div>
       </div>
 
-      <!-- 物流步骤条 -->
       <div class="express-card steps-card">
         <div class="card-title">物流轨迹</div>
         <div class="steps-timeline" v-if="list.list && list.list.length">
@@ -50,6 +48,64 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { useRouter, useRoute } from 'vue-router'
+import { ref, onBeforeMount } from 'vue'
+import { POST } from '@/services/request'
+import { showFailToast } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { copyText } from '@/utils/clipboard'
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
+
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+
+const login = userStore.userInfo || {}
+const busid = login.id || 0
+const orderid = getRouteQueryValue(route.query, 'orderid', 0)
+
+const list = ref({ list: [] })
+const expressInfo = ref({})
+
+const back = () => {
+  router.go(-1)
+}
+
+const copyTrackingNo = () => {
+  copyText(list.value.exfasscode || '')
+}
+
+onBeforeMount(async () => {
+  try {
+    const result = await POST({
+      url: '/order/express',
+      params: {
+        busid: busid,
+        orderid: orderid
+      }
+    })
+
+    if (isBizFail(result)) {
+      showFailToast({
+        message: result.msg,
+        onClose: () => {
+          router.go(-1)
+        }
+      })
+      return
+    }
+
+    const data = result.data || { list: [] }
+    list.value = data
+    expressInfo.value = data
+  } catch (error) {
+    showFailToast('物流信息加载失败，请稍后重试')
+  }
+})
+</script>
 
 <style scoped>
 .express-container {
@@ -205,63 +261,3 @@
   color: var(--text-secondary);
 }
 </style>
-
-<script setup>
-// 物流详情页：
-// 负责物流公司与运单信息展示、轨迹时间线渲染与运单号复制。
-import { useRouter, useRoute } from 'vue-router'
-import { ref, onBeforeMount } from 'vue'
-import { POST } from '@/services/request'
-import { showFailToast } from 'vant'
-import { useUserStore } from '@/stores/user'
-import { copyText } from '@/utils/clipboard'
-import { getRouteQueryValue } from '@/utils/params'
-import { isBizFail } from '@/utils/result'
-
-const router = useRouter()
-const route = useRoute()
-const userStore = useUserStore()
-
-const login = userStore.userInfo || {}
-const busid = login.id || 0
-const orderid = getRouteQueryValue(route.query, 'orderid', 0)
-
-const list = ref({ list: [] })
-const expressInfo = ref({})
-
-const back = () => {
-  router.go(-1)
-}
-
-const copyTrackingNo = () => {
-  copyText(list.value.exfasscode || '')
-}
-
-onBeforeMount(async () => {
-  try {
-    const result = await POST({
-      url: '/order/express',
-      params: {
-        busid: busid,
-        orderid: orderid
-      }
-    })
-
-    if (isBizFail(result)) {
-      showFailToast({
-        message: result.msg,
-        onClose: () => {
-          router.go(-1)
-        }
-      })
-      return
-    }
-
-    const data = result.data || { list: [] }
-    list.value = data
-    expressInfo.value = data
-  } catch (error) {
-    showFailToast('物流信息加载失败，请稍后重试')
-  }
-})
-</script>

@@ -16,74 +16,252 @@
       <van-nav-bar title="购物车" left-arrow @click-left="back" />
     </van-sticky>
 
-    <div class="cart-list-container">
-      <van-checkbox-group v-model="checked" @change="CheckList">
-        <div class="cart-item" v-for="cart in cartlist" :key="cart.id">
-          <div class="checkbox-wrapper">
-            <van-checkbox :name="cart.id" icon-size="20px" checked-color="#FF464E" />
-          </div>
-
-          <van-swipe-cell class="swipe-wrapper">
-            <div class="goods-card-wrapper" @click="goToProduct(cart.product?.id || cart.proid)">
-              <van-card 
-                class="goods-card" 
-                :thumb="cart.product?.thumbs_text || cart.thumbs_text || cart.image || cart.product?.image"
-                lazy-load
-              >
-                <template #title>
-                  <div class="product-title">{{ cart.product?.name || cart.name || cart.proname }}</div>
-                </template>
-                <template #price>
-                  <div class="price-row">
-                    <span class="currency">¥</span>
-                    <span class="amount">{{ getCartTotal(cart) }}</span>
-                  </div>
-                </template>
-                <template #desc>
-                  <div class="desc-info">
-                    <div class="stock">库存：{{ cart.product?.stock || cart.stock || 0 }}</div>
-                    <div class="unit-price">单价：¥{{ formatAmount(cart.price) }}</div>
-                  </div>
-                </template>
-                <template #num>
-                  <div @click.stop>
-                    <van-stepper 
-                      v-model="cart.nums" 
-                      :name="cart.id" 
-                      disable-input 
-                      @change="CartStep"
-                      button-size="28px"
-                      integer
-                    />
-                  </div>
-                </template>
-              </van-card>
-            </div>
-
-            <template #right>
-              <van-button square text="删除" type="danger" class="delete-button" @click="CartDel(cart.id)" />
-            </template>
-          </van-swipe-cell>
+    <!-- 首屏骨架屏 -->
+    <div v-if="loading" class="cart-list-container cart-skeleton">
+      <div v-for="i in 3" :key="i" class="sk-cart-item">
+        <van-skeleton-avatar avatar-size="20px" />
+        <van-skeleton-image image-size="90px" class="sk-thumb" />
+        <div class="sk-info">
+          <van-skeleton-title title-width="80%" />
+          <van-skeleton-title title-width="40%" />
+          <van-skeleton-paragraph :row-width="['50%', '30%']" />
         </div>
-      </van-checkbox-group>
-
-      <van-empty v-if="cartlist.length === 0" description="购物车空空如也" image="search">
-        <van-button round type="primary" class="go-shop-btn" to="/">去逛逛</van-button>
-      </van-empty>
+      </div>
     </div>
 
-    <van-submit-bar 
-      :price="price" 
-      button-text="结算" 
-      @submit="submit" 
-      class="submit-bar"
-    >
-      <van-checkbox v-model="toggle" @click="ToggleCheck" checked-color="#FF464E">全选</van-checkbox>
-    </van-submit-bar>
+    <template v-else>
+      <div class="cart-list-container">
+        <van-checkbox-group v-model="checked" @change="CheckList">
+          <div class="cart-item" v-for="cart in cartlist" :key="cart.id">
+            <div class="checkbox-wrapper">
+              <van-checkbox :name="cart.id" icon-size="20px" checked-color="#FF464E" />
+            </div>
+
+            <van-swipe-cell class="swipe-wrapper">
+              <div class="goods-card-wrapper" @click="goToProduct(cart.product?.id || cart.proid)">
+                <van-card
+                  class="goods-card"
+                  :thumb="cart.product?.thumbs_text || cart.thumbs_text || cart.image || cart.product?.image"
+                  lazy-load
+                >
+                  <template #title>
+                    <div class="product-title">{{ cart.product?.name || cart.name || cart.proname }}</div>
+                  </template>
+                  <template #price>
+                    <div class="price-row">
+                      <span class="currency">¥</span>
+                      <span class="amount">{{ getCartTotal(cart) }}</span>
+                    </div>
+                  </template>
+                  <template #desc>
+                    <div class="desc-info">
+                      <div class="stock">库存：{{ cart.product?.stock || cart.stock || 0 }}</div>
+                      <div class="unit-price">单价：¥{{ formatAmount(cart.price) }}</div>
+                    </div>
+                  </template>
+                  <template #num>
+                    <div @click.stop>
+                      <van-stepper
+                        v-model="cart.nums"
+                        :name="cart.id"
+                        disable-input
+                        @change="CartStep"
+                        button-size="28px"
+                        integer
+                      />
+                    </div>
+                  </template>
+                </van-card>
+              </div>
+
+              <template #right>
+                <van-button square text="删除" type="danger" class="delete-button" @click="CartDel(cart.id)" />
+              </template>
+            </van-swipe-cell>
+          </div>
+        </van-checkbox-group>
+
+        <van-empty v-if="cartlist.length === 0" description="购物车空空如也" image="search">
+          <van-button round type="primary" class="go-shop-btn" to="/">去逛逛</van-button>
+        </van-empty>
+      </div>
+
+      <van-submit-bar :price="price" button-text="结算" @submit="submit" class="submit-bar">
+        <van-checkbox v-model="toggle" @click="ToggleCheck" checked-color="#FF464E">全选</van-checkbox>
+      </van-submit-bar>
+    </template>
 
     <Menu />
   </div>
 </template>
+
+<script setup>
+defineOptions({ name: 'Cart' })
+
+import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import Menu from '@/components/common/Menu.vue'
+import { POST, isCancel } from '@/services/request'
+import { showFailToast, showConfirmDialog } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
+import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
+import { normalizeIdList } from '@/utils/params'
+import { isBizSuccess, isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
+
+const router = useRouter()
+const userStore = useUserStore()
+const cartStore = useCartStore()
+const back = useBack()
+
+/** 用户ID */
+const busid = computed(() => {
+  const login = userStore.userInfo || {}
+  return Object.hasOwn(login, 'id') ? login.id : 0
+})
+
+const cartlist = ref([])
+const checked = ref([])
+const toggle = ref(false)
+const mutating = ref(false)
+const loading = ref(true)
+
+/** 跳转商品详情 */
+const goToProduct = productId => {
+  if (productId) router.push({ path: '/product/info', query: { proid: productId } })
+}
+
+/** 加载购物车数据 */
+const CartData = async () => {
+  if (!busid.value) return
+
+  try {
+    const result = await POST({ url: '/cart/index', params: { busid: busid.value } })
+
+    if (isBizSuccess(result)) {
+      cartlist.value = result.data || []
+      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums || 0, 10), 0)
+      cartStore.setCount(totalNums)
+    } else {
+      cartlist.value = []
+      cartStore.setCount(0)
+    }
+  } catch (error) {
+    if (!isCancel(error)) showFailToast('购物车加载失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(
+  busid,
+  newVal => {
+    if (newVal) CartData()
+    else {
+      cartlist.value = []
+      cartStore.setCount(0)
+      loading.value = false
+    }
+  },
+  { immediate: true }
+)
+
+/** 全选/取消全选 */
+const ToggleCheck = () => {
+  if (toggle.value) checked.value = cartlist.value.map(item => item.id)
+  else checked.value = []
+}
+
+/** 更新全选状态 */
+const CheckList = () => {
+  const list = cartlist.value.map(item => item.id)
+  const result = checked.value.length === list.length && [...checked.value].sort().toString() === list.sort().toString()
+  toggle.value = result
+}
+
+/** 计算选中商品总价（分） */
+const price = computed(() => {
+  let sum = 0
+  cartlist.value.forEach(item => {
+    if (checked.value.includes(item.id)) sum += roundToTwo(item.total)
+  })
+  return toFen(sum)
+})
+
+/** 格式化金额显示 */
+const formatAmount = amount => formatCurrency(amount)
+
+/** 计算单件商品小计 */
+const getCartTotal = cart => {
+  const total = cart.total || roundToTwo(cart.price) * parseInt(cart.nums || 0, 10)
+  return formatAmount(total)
+}
+
+/** 修改商品数量 */
+const CartStep = async (value, detail) => {
+  if (mutating.value) return
+  mutating.value = true
+  const data = { busid: busid.value, cartid: detail.name, nums: value }
+
+  try {
+    const result = await POST({ url: '/cart/edit', params: data })
+    if (isBizFail(result)) {
+      showFailToast(result.msg)
+      return false
+    }
+
+    cartlist.value = result.data
+    const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums, 10), 0)
+    cartStore.setCount(totalNums)
+  } catch (error) {
+    showFailToast('更新购物车失败，请稍后重试')
+  } finally {
+    mutating.value = false
+  }
+}
+
+/** 删除商品 */
+const CartDel = async cartid => {
+  showConfirmDialog({
+    title: '删除提醒',
+    message: '是否确认删除该宝贝',
+    confirmButtonColor: '#FF464E'
+  })
+    .then(async () => {
+      if (mutating.value) return
+      mutating.value = true
+      const data = { cartid, busid: busid.value }
+
+      try {
+        const result = await POST({ url: '/cart/del', params: data })
+        if (isBizFail(result)) {
+          showFailToast(result.msg)
+          return false
+        }
+
+        cartlist.value = result.data
+        const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums, 10), 0)
+        cartStore.setCount(totalNums)
+        checked.value = checked.value.filter(id => id !== cartid)
+      } catch (error) {
+        showFailToast('删除失败，请稍后重试')
+      } finally {
+        mutating.value = false
+      }
+    })
+    .catch(() => {})
+}
+
+/** 提交结算 */
+const submit = () => {
+  if (checked.value.length <= 0) {
+    showFailToast('请选择购物车商品')
+    return false
+  }
+  router.push({ path: '/cart/confirm', query: { cartids: normalizeIdList(checked.value) } })
+}
+</script>
 
 <style scoped>
 .cart-page {
@@ -103,7 +281,8 @@
 
 .cart-list-container {
   padding: var(--spacing-md);
-  padding-bottom: 100px;
+  /* 100px 为 submit-bar(50px) + tabbar(50px) 总高度，加 safe-area 补偿底部安全区 */
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
 }
 
 .cart-item {
@@ -207,7 +386,7 @@
 }
 
 :deep(.van-stepper) {
-  --van-stepper-active-color: #FF464E;
+  --van-stepper-active-color: #ff464e;
   --van-stepper-button-size: 28px;
 }
 
@@ -235,7 +414,8 @@
 /* ========== 提交栏 - 紧贴 TabBar ========== */
 .submit-bar {
   position: fixed !important;
-  bottom: 50px !important;
+  /* 50px 为 TabBar 高度，env(safe-area-inset-bottom) 补偿 iPhone Home Indicator 安全区 */
+  bottom: calc(50px + env(safe-area-inset-bottom)) !important;
   left: 0 !important;
   right: 0 !important;
   margin: 0 !important;
@@ -310,153 +490,33 @@
   border: none;
   border-radius: var(--radius-full);
 }
+
+/* ========== 首屏骨架屏 ========== */
+.cart-skeleton {
+  padding-bottom: var(--spacing-md);
+}
+
+.sk-cart-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.sk-thumb {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sk-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 </style>
-
-<script setup>
-defineOptions({ name: 'cart' })
-
-import { useRouter } from 'vue-router'
-import { ref, onBeforeMount, computed, watch } from 'vue'
-import Menu from '@/components/common/Menu.vue'
-import { POST } from '@/services/request'
-import axios from 'axios'
-import { showFailToast, showConfirmDialog } from 'vant'
-import { useUserStore } from '@/stores/user'
-import { useCartStore } from '@/stores/cart'
-import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
-import { normalizeIdList } from '@/utils/params'
-import { isBizSuccess, isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
-
-const router = useRouter()
-const userStore = useUserStore()
-const cartStore = useCartStore()
-const back = useBack()
-
-/** 用户ID */
-const busid = computed(() => {
-  const login = userStore.userInfo || {}
-  return login.hasOwnProperty('id') ? login.id : 0
-})
-
-const cartlist = ref([])
-const checked = ref([])
-const toggle = ref(false)
-const mutating = ref(false)
-
-/** 跳转商品详情 */
-const goToProduct = (productId) => {
-  if (productId) router.push({ path: '/product/info', query: { proid: productId } })
-}
-
-/** 加载购物车数据 */
-const CartData = async () => {
-  if (!busid.value) return
-
-  try {
-    const result = await POST({ url: '/cart/index', params: { busid: busid.value } })
-
-    if (isBizSuccess(result)) {
-      cartlist.value = result.data || []
-      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums || 0), 0)
-      cartStore.setCount(totalNums)
-    } else {
-      cartlist.value = []
-      cartStore.setCount(0)
-    }
-  } catch (error) {
-    if (!axios.isCancel(error)) showFailToast('购物车加载失败，请稍后重试')
-  }
-}
-
-onBeforeMount(() => {})
-
-watch(busid, (newVal) => {
-  if (newVal) CartData()
-  else { cartlist.value = []; cartStore.setCount(0) }
-}, { immediate: true })
-
-/** 全选/取消全选 */
-const ToggleCheck = () => {
-  if (toggle.value) checked.value = cartlist.value.map(item => item.id)
-  else checked.value = []
-}
-
-/** 更新全选状态 */
-const CheckList = (value) => {
-  const list = cartlist.value.map(item => item.id)
-  const result = checked.value.length === list.length && [...checked.value].sort().toString() === list.sort().toString()
-  toggle.value = result
-}
-
-/** 计算选中商品总价（分） */
-const price = computed(() => {
-  let sum = 0
-  cartlist.value.forEach(item => {
-    if (checked.value.includes(item.id)) sum += roundToTwo(item.total)
-  })
-  return toFen(sum)
-})
-
-/** 格式化金额显示 */
-const formatAmount = (amount) => formatCurrency(amount)
-
-/** 计算单件商品小计 */
-const getCartTotal = (cart) => {
-  const total = cart.total || (roundToTwo(cart.price) * parseInt(cart.nums || 0, 10))
-  return formatAmount(total)
-}
-
-/** 修改商品数量 */
-const CartStep = async (_value, detail) => {
-  if (mutating.value) return
-  mutating.value = true
-  const data = { busid: busid.value, cartid: detail.name, nums: value }
-
-  try {
-    const result = await POST({ url: '/cart/edit', params: data })
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
-
-    cartlist.value = result.data
-    const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums), 0)
-    cartStore.setCount(totalNums)
-  } catch (error) {
-    showFailToast('更新购物车失败，请稍后重试')
-  } finally {
-    mutating.value = false
-  }
-}
-
-/** 删除商品 */
-const CartDel = async (cartid) => {
-  showConfirmDialog({
-    title: '删除提醒',
-    message: '是否确认删除该宝贝',
-    confirmButtonColor: '#FF464E'
-  }).then(async () => {
-    if (mutating.value) return
-    mutating.value = true
-    const data = { cartid, busid: busid.value }
-
-    try {
-      const result = await POST({ url: '/cart/del', params: data })
-      if (isBizFail(result)) { showFailToast(result.msg); return false }
-
-      cartlist.value = result.data
-      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums), 0)
-      cartStore.setCount(totalNums)
-      checked.value = checked.value.filter(id => id !== cartid)
-    } catch (error) {
-      showFailToast('删除失败，请稍后重试')
-    } finally {
-      mutating.value = false
-    }
-  }).catch(() => {})
-}
-
-/** 提交结算 */
-const submit = () => {
-  if (checked.value.length <= 0) { showFailToast('请选择购物车商品'); return false }
-  router.push({ path: '/cart/confirm', query: { cartids: normalizeIdList(checked.value) } })
-}
-</script>

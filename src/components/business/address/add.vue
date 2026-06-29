@@ -11,12 +11,7 @@
 -->
 <template>
   <div class="address-add-page">
-    <van-nav-bar
-      title="新增收货地址"
-      left-arrow
-      @click-left="back"
-      class="custom-nav"
-    />
+    <van-nav-bar title="新增收货地址" left-arrow @click-left="back" class="custom-nav" />
 
     <div class="address-edit-container">
       <van-address-edit
@@ -30,6 +25,57 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { areaList } from '@vant/area-data'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
+
+const userStore = useUserStore()
+const router = useRouter()
+const business = userStore.userInfo || {}
+const saving = ref(false)
+
+const back = useBack()
+
+/** 保存新地址 */
+const save = async info => {
+  if (saving.value) return false
+  const data = {
+    busid: business.id,
+    consignee: info.name,
+    mobile: info.tel,
+    address: info.addressDetail,
+    code: info.areaCode,
+    status: info.isDefault
+  }
+
+  saving.value = true
+  try {
+    const result = await POST({ url: '/address/add', params: data })
+    if (isBizFail(result)) {
+      showFailToast(result.msg)
+      return false
+    }
+
+    showSuccessToast({
+      message: result.msg,
+      onClose: () => {
+        router.go(-1)
+      }
+    })
+  } catch (error) {
+    showFailToast('保存地址失败，请稍后重试')
+  } finally {
+    saving.value = false
+  }
+}
+</script>
 
 <style scoped>
 .address-add-page {
@@ -79,49 +125,3 @@
   background-color: var(--primary-color);
 }
 </style>
-
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { areaList } from '@vant/area-data'
-import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast } from 'vant'
-import { useUserStore } from '@/stores/user'
-import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
-
-const userStore = useUserStore()
-const router = useRouter()
-var business = userStore.userInfo || {}
-const saving = ref(false)
-
-const back = useBack()
-
-/** 保存新地址 */
-const save = async (info) => {
-  if (saving.value) return false
-  var data = {
-    busid: business.id,
-    consignee: info.name,
-    mobile: info.tel,
-    address: info.addressDetail,
-    code: info.areaCode,
-    status: info.isDefault
-  }
-
-  saving.value = true
-  try {
-    var result = await POST({ url: '/address/add', params: data })
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
-
-    showSuccessToast({
-      message: result.msg,
-      onClose: () => { router.go(-1) }
-    })
-  } catch (error) {
-    showFailToast('保存地址失败，请稍后重试')
-  } finally {
-    saving.value = false
-  }
-}
-</script>

@@ -1,11 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/jaiju.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>家居商城</title>
+    <link rel="icon" type="image/x-icon" href="/jaiju.ico" />
+
+    <!-- 移动端基础：viewport-fit=cover 启用 iPhone 刘海/Home Indicator 安全区 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+
+    <!-- SEO 基础元信息 -->
+    <title>家居商城 - 移动端电商购物平台</title>
+    <meta
+      name="description"
+      content="家居商城是一个基于 Vue 3 + TypeScript + Vite + Vant 构建的移动端电商平台，提供商品浏览、购物车、订单管理、在线支付等完整购物流程。"
+    />
+    <meta name="keywords" content="家居商城,移动端电商,Vue3,TypeScript,Vite,Vant,在线购物,电商前台" />
+    <meta name="author" content="vue_shop" />
+
+    <!-- Open Graph：社交分享卡片 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="家居商城 - 移动端电商购物平台" />
+    <meta
+      property="og:description"
+      content="基于 Vue 3 + TypeScript + Vite + Vant 构建的移动端电商平台，覆盖完整购物业务闭环。"
+    />
+    <meta property="og:locale" content="zh_CN" />
+
+    <!-- 移动端浏览器主题色（地址栏配色） -->
+    <meta name="theme-color" content="#FF464E" />
   </head>
-  <body id="app"></body>
+  <body id="app">
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
-<script type="module" src="/src/main.js"></script>

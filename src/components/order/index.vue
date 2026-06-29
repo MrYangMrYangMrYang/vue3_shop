@@ -38,144 +38,24 @@
         @load="load"
       >
         <div class="order-container">
-          <div class="order-card" :class="{ 'order-disappearing': disappearingOrderIds.has(order.id) }" v-for="order in list" :key="order.id">
-            <div
-              v-if="isPendingPayment(order.status) && !isPaymentExpired(order.createtime)"
-              class="countdown-bar"
-            >
-              <van-icon name="clock-o" />
-              <span class="countdown-label">剩余付款时间</span>
-              <span class="countdown-time">{{ countdownMap[order.id] || '30:00' }}</span>
-            </div>
+          <OrderCard
+            v-for="order in list"
+            :key="order.id"
+            :order="order"
+            :countdown-time="countdownMap[order.id] || '30:00'"
+            :is-loading="isLoadingOrder(order.id)"
+            :is-disappearing="disappearingOrderIds.has(order.id)"
+            @detail="goinfo"
+            @pay="payOrder"
+            @cancel="cancelOrder"
+            @urge="cuihahuo"
+            @express="express"
+            @confirm="confirmReceive"
+            @evaluate="evaluate"
+            @after-sale="applyAfterSale"
+          />
 
-            <div class="order-header">
-              <span class="order-no">订单号: {{ order.code }}</span>
-              <span class="order-status" :class="order.status_class">
-                {{ order.status_text }}
-              </span>
-            </div>
-
-            <div class="order-content" @click="goinfo(order.id)">
-              <div class="product-img">
-                <img :src="order.thumbs_text" alt="" />
-              </div>
-              <div class="product-info">
-                <div class="product-name">{{ order.name_text }}</div>
-                <div class="order-time">{{ order.createtime_text }}</div>
-                <div class="order-price">
-                  <span class="label">{{ isPendingPayment(order.status) ? '需付:' : '实付:' }}</span>
-                  <span class="currency">¥</span>
-                  <span class="amount">{{ formatAmount(order.amount) }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-footer">
-              <van-button v-if="!isPendingPayment(order.status)" size="small" round class="btn-detail" @click="goinfo(order.id)">订单详情</van-button>
-
-              <van-button
-                v-if="isPendingPayment(order.status)"
-                size="small"
-                round
-                class="btn-action primary"
-                :loading="actionLoading"
-                :disabled="actionLoading || isPaymentExpired(order.createtime)"
-                @click="payOrder(order.id)"
-              >
-                去付款
-              </van-button>
-
-              <van-button
-                v-if="isPendingPayment(order.status)"
-                size="small"
-                round
-                class="btn-action"
-                @click="cancelOrder(order.id)"
-              >
-                取消订单
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.PENDING_SHIP"
-                size="small"
-                round
-                class="btn-action primary"
-                @click="cuihahuo"
-              >
-                催发货
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.PENDING_RECEIVE && order.exfasscode"
-                size="small"
-                round
-                class="btn-action"
-                @click="express(order.id)"
-              >
-                查看物流
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.PENDING_RECEIVE"
-                size="small"
-                round
-                class="btn-action primary"
-                :loading="actionLoading"
-                :disabled="actionLoading"
-                @click="confirmReceive(order.id)"
-              >
-                确认收货
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.PENDING_REVIEW"
-                size="small"
-                round
-                class="btn-action warning"
-                @click="eveluate(order.id)"
-              >
-                评价晒单
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.COMPLETED"
-                size="small"
-                round
-                class="btn-action danger"
-                :loading="actionLoading"
-                :disabled="actionLoading"
-                @click="applyAfterSale(order.id)"
-              >
-                申请售后
-              </van-button>
-
-              <van-button
-                v-if="order.status === ORDER_STATUS.AFTER_SALE"
-                size="small"
-                round
-                disabled
-                class="btn-action"
-              >
-                售后审核中
-              </van-button>
-
-              <van-button
-                v-if="isCancelled(order.status)"
-                size="small"
-                round
-                disabled
-                class="btn-action"
-              >
-                已取消
-              </van-button>
-            </div>
-          </div>
-
-          <van-empty
-            v-if="list.length === 0 && !loading"
-            image="default"
-            description="没有更多订单了"
-          >
+          <van-empty v-if="list.length === 0 && !loading" image="default" description="没有更多订单了">
             <van-button round type="primary" class="go-shop-btn" to="/">去选购商品</van-button>
           </van-empty>
         </div>
@@ -184,264 +64,57 @@
   </div>
 </template>
 
-<style scoped>
-.order-list-page {
-  background: var(--bg-color);
-  min-height: 100vh;
-}
-
-.custom-nav {
-  background: var(--primary-gradient);
-}
-
-:deep(.van-nav-bar__title),
-:deep(.van-nav-bar .van-icon) {
-  color: white !important;
-}
-
-:deep(.van-tabs__line) {
-  background-color: var(--primary-color);
-}
-
-:deep(.van-tab--active) {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-.order-container {
-  padding: var(--spacing-md);
-}
-
-.order-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.4s ease-out;
-  transform-origin: center;
-}
-
-.order-disappearing {
-  opacity: 0;
-  transform: translateX(-30px) scale(0.95);
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  margin-bottom: 0;
-  overflow: hidden;
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--bg-color);
-}
-
-.order-no {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.order-status {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.status-0 {
-  color: var(--text-secondary);
-}
-.status--2 {
-  color: #ff464e;
-}
-.status-1 {
-  color: #ff9500;
-}
-.status-2 {
-  color: #07c160;
-}
-.status-3 {
-  color: var(--primary-color);
-}
-.status-4 {
-  color: var(--text-secondary);
-}
-.status--1 {
-  color: #ff976a;
-}
-.status--3 {
-  color: var(--text-placeholder);
-}
-
-.countdown-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 0;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: #ff6b00;
-  font-weight: 500;
-}
-
-.countdown-bar .van-icon {
-  font-size: 14px;
-}
-
-.countdown-label {
-  opacity: 0.85;
-}
-
-.countdown-time {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  font-family: 'Courier New', monospace;
-}
-
-.order-content {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.order-content:active {
-  opacity: 0.7;
-}
-
-.product-img {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg-color);
-  flex-shrink: 0;
-}
-
-.product-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.product-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.4;
-}
-
-.order-time {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.order-price {
-  margin-top: 8px;
-  text-align: right;
-}
-
-.order-price .label {
-  font-size: 12px;
-  color: var(--text-primary);
-  margin-right: 4px;
-}
-
-.order-price .currency {
-  font-size: 12px;
-  color: var(--primary-color);
-  font-weight: 700;
-}
-
-.order-price .amount {
-  font-size: 18px;
-  color: var(--primary-color);
-  font-weight: 800;
-}
-
-.order-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--bg-color);
-  flex-wrap: wrap;
-}
-
-.btn-detail {
-  color: var(--text-secondary);
-  border-color: var(--text-placeholder);
-}
-
-.btn-action {
-  min-width: 80px;
-}
-
-.btn-action.primary {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.btn-action.warning {
-  color: #ffbe00;
-  border-color: #ffbe00;
-}
-
-.btn-action.danger {
-  color: var(--text-secondary);
-  border-color: var(--text-placeholder);
-}
-
-.go-shop-btn {
-  width: 160px;
-  background: var(--primary-gradient);
-  border: none;
-}
-
-.order-empty {
-  padding: 48px 0 24px;
-}
-</style>
-
-<script setup>
+<script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onBeforeMount, onBeforeUnmount, nextTick } from 'vue'
 import { POST } from '@/services/request'
-import { showToast, showSuccessToast, showFailToast, showLoadingToast, closeToast, showConfirmDialog, showDialog } from 'vant'
+import {
+  showToast,
+  showSuccessToast,
+  showFailToast,
+  showLoadingToast,
+  closeToast,
+  showConfirmDialog,
+  showDialog
+} from 'vant'
 import { useUserStore } from '@/stores/user'
 import { usePendingPaymentStore } from '@/stores/pendingPayment'
 import { useCompletedLocalOrdersStore } from '@/stores/completedLocalOrders'
-import {
-  ORDER_STATUS,
-  getOrderStatusText,
-  getOrderStatusClass,
-  isPendingPayment,
-  isCancelled
-} from '@/constants/order'
-import { formatCurrency } from '@/utils/currency'
+import { ORDER_STATUS, getOrderStatusText, getOrderStatusClass, isPendingPayment } from '@/constants/order'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
-import { getRemainingTime, isPaymentExpired } from '@/utils/countdown'
+import { isPaymentExpired } from '@/utils/countdown'
 import { useCountdown, useBack } from '@/hooks'
+import OrderCard from './OrderCard.vue'
+
+/** 订单列表项（后端订单 + 本地待支付/已完成订单的字段并集） */
+interface OrderListItem {
+  id: string | number
+  code?: string
+  status?: string | number
+  status_text?: string
+  status_class?: string
+  thumbs_text?: string
+  name_text?: string
+  createtime_text?: string
+  createtime?: string | number
+  amount?: number
+  exfasscode?: string | number
+  _isLocalPending?: boolean
+  created_at?: number
+}
+
+/** 通用操作执行器参数 */
+interface ExecuteActionOptions {
+  url: string
+  params: Record<string, any>
+  orderid: string | number
+  confirmTitle: string
+  confirmMessage: string
+  successMsg: string
+  failMsg: string
+  onSuccess?: () => void
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -452,22 +125,27 @@ const completedLocalOrdersStore = useCompletedLocalOrdersStore()
 const back = useBack()
 
 const login = userStore.userInfo || {}
-const busid = login.hasOwnProperty('id') ? login.id : 0
+const busid = Object.hasOwn(login, 'id') ? login.id : 0
 
 const active = ref('0')
-const list = ref([])
+const list = ref<OrderListItem[]>([])
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
-const actionLoading = ref(false)
-const disappearingOrderIds = ref(new Set())
+/** 正在执行操作的订单ID集合（per-order loading，避免一个订单的操作禁用所有订单按钮） */
+const loadingOrderIds = ref(new Set<string | number>())
+const isLoadingOrder = (orderid: string | number): boolean => loadingOrderIds.value.has(orderid)
+const setOrderLoading = (orderid: string | number, loading: boolean): void => {
+  const next = new Set(loadingOrderIds.value)
+  if (loading) next.add(orderid)
+  else next.delete(orderid)
+  loadingOrderIds.value = next
+}
+const disappearingOrderIds = ref(new Set<string | number>())
 const { countdownMap, startCountdown, stopCountdown } = useCountdown(() => list.value, isPendingPayment)
-let page = ref(1)
+const page = ref(1)
 const ORDER_LIST_CACHE_KEY = 'order:list:view-state'
 const finishedText = computed(() => (list.value.length === 0 ? '' : '没有更多订单了'))
-
-/** 格式化金额显示 */
-const formatAmount = (amount) => formatCurrency(amount)
 
 /** 恢复列表状态缓存 */
 const restoreOrderListState = () => {
@@ -483,17 +161,21 @@ const restoreOrderListState = () => {
 
 /** 保存列表状态到缓存 */
 const saveOrderListState = () => {
-  setCache(ORDER_LIST_CACHE_KEY, {
-    active: active.value,
-    page: page.value,
-    finished: finished.value,
-    list: list.value,
-    scrollTop: window.scrollY || 0
-  }, 10 * 60 * 1000)
+  setCache(
+    ORDER_LIST_CACHE_KEY,
+    {
+      active: active.value,
+      page: page.value,
+      finished: finished.value,
+      list: list.value,
+      scrollTop: window.scrollY || 0
+    },
+    10 * 60 * 1000
+  )
 }
 
 /** Tab切换时重新加载 */
-const TabChange = (name, title) => {
+const TabChange = () => {
   page.value = 1
   finished.value = false
   loading.value = true
@@ -526,14 +208,15 @@ const OrderData = async () => {
       params: {
         busid: busid,
         status: active.value,
-        page: page.value,
+        page: page.value
       }
     })
 
     if (isBizFail(result) || !Array.isArray(result.data) || result.data.length <= 0) {
       if (pendingPaymentStore.orders.length > 0 && page.value === 1) {
-        const isAllOrPending = String(active.value) === String(ORDER_STATUS.ALL) ||
-                               String(active.value) === String(ORDER_STATUS.PENDING_PAYMENT)
+        const isAllOrPending =
+          String(active.value) === String(ORDER_STATUS.ALL) ||
+          String(active.value) === String(ORDER_STATUS.PENDING_PAYMENT)
         if (isAllOrPending) {
           const localPendingOrders = pendingPaymentStore.orders.map(order => ({
             ...order,
@@ -546,7 +229,7 @@ const OrderData = async () => {
       }
 
       const isAllTab = String(active.value) === String(ORDER_STATUS.ALL)
-      const completedOrdersForTab = isAllTab 
+      const completedOrdersForTab = isAllTab
         ? completedLocalOrdersStore.getAllOrders()
         : completedLocalOrdersStore.getOrderByStatus(active.value)
       if (completedOrdersForTab.length > 0 && page.value === 1) {
@@ -562,8 +245,9 @@ const OrderData = async () => {
       }))
 
       if (pendingPaymentStore.orders.length > 0 && page.value === 1) {
-        const isAllOrPending = String(active.value) === String(ORDER_STATUS.ALL) ||
-                               String(active.value) === String(ORDER_STATUS.PENDING_PAYMENT)
+        const isAllOrPending =
+          String(active.value) === String(ORDER_STATUS.ALL) ||
+          String(active.value) === String(ORDER_STATUS.PENDING_PAYMENT)
         if (isAllOrPending) {
           const localOrderIds = new Set(pendingPaymentStore.orders.map(o => o.id))
           const serverOrdersWithoutLocal = processedData.filter(item => !localOrderIds.has(item.id))
@@ -602,9 +286,9 @@ const OrderData = async () => {
 }
 
 /** 通用操作执行器（确认弹窗 + API调用） */
-const executeAction = async (options) => {
-  const { url, params, confirmTitle, confirmMessage, successMsg, failMsg, loadingRef } = options
-  if (loadingRef.value) return
+const executeAction = async (options: ExecuteActionOptions): Promise<void> => {
+  const { url, params, orderid, confirmTitle, confirmMessage, successMsg, failMsg } = options
+  if (isLoadingOrder(orderid)) return
 
   try {
     await showConfirmDialog({
@@ -616,11 +300,11 @@ const executeAction = async (options) => {
     return
   }
 
-  loadingRef.value = true
+  setOrderLoading(orderid, true)
   try {
     const result = await POST({ url, params })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || failMsg)
     } else {
       showSuccessToast(result.msg || successMsg)
       if (options.onSuccess) {
@@ -631,13 +315,13 @@ const executeAction = async (options) => {
   } catch (error) {
     showFailToast(failMsg)
   } finally {
-    loadingRef.value = false
+    setOrderLoading(orderid, false)
   }
 }
 
 /** 支付订单（区分本地/服务端） */
-const payOrder = (orderid) => {
-  if (actionLoading.value) {
+const payOrder = (orderid: string | number): void => {
+  if (isLoadingOrder(orderid)) {
     return
   }
 
@@ -656,11 +340,10 @@ const payOrder = (orderid) => {
     confirmButtonColor: '#FF464E'
   })
     .then(async () => {
-      
       const isLocalOrder = String(orderid).startsWith('LOCAL_')
-      
-      actionLoading.value = true
-      
+
+      setOrderLoading(orderid, true)
+
       if (isLocalOrder) {
         try {
           showLoadingToast({
@@ -672,13 +355,13 @@ const payOrder = (orderid) => {
           await new Promise(resolve => setTimeout(resolve, 2000))
 
           closeToast()
-          
+
           const orderIndex = list.value.findIndex(o => o.id === orderid)
           if (orderIndex !== -1) {
             list.value[orderIndex].status = ORDER_STATUS.PENDING_SHIP
             list.value[orderIndex].status_text = '待发货'
             list.value[orderIndex].status_class = getOrderStatusClass(ORDER_STATUS.PENDING_SHIP)
-            
+
             completedLocalOrdersStore.addCompletedOrder(list.value[orderIndex])
           }
 
@@ -691,17 +374,17 @@ const payOrder = (orderid) => {
             confirmButtonColor: '#FF464E'
           }).then(() => {
             active.value = ORDER_STATUS.PENDING_SHIP
-            TabChange(ORDER_STATUS.PENDING_SHIP, '待发货')
+            TabChange()
           })
         } catch (error) {
           closeToast()
           showFailToast('支付失败：' + (error.message || '未知错误'))
         } finally {
-          actionLoading.value = false
+          setOrderLoading(orderid, false)
         }
         return
       }
-      
+
       try {
         showLoadingToast({
           message: '支付中...',
@@ -734,23 +417,22 @@ const payOrder = (orderid) => {
         closeToast()
         showFailToast('支付失败：' + (error.message || '网络异常'))
       } finally {
-        actionLoading.value = false
+        setOrderLoading(orderid, false)
       }
     })
-    .catch((error) => {
-
-      if (error && actionLoading.value) {
-        actionLoading.value = false
+    .catch(error => {
+      if (isLoadingOrder(orderid)) {
+        setOrderLoading(orderid, false)
       }
-
-      if (error) {
-        showFailToast('支付异常：' + (error.message || '未知错误'))
+      // Vant 取消时 reject 的 DialogInstance 无 .message 字段，不应视为异常
+      if (error?.message) {
+        showFailToast('支付异常：' + error.message)
       }
     })
 }
 
 /** 取消订单（本地订单动画删除，服务端调用API） */
-const cancelOrder = (orderid) => {
+const cancelOrder = (orderid: string | number): void => {
   const isLocalOrder = String(orderid).startsWith('LOCAL_')
 
   if (isLocalOrder) {
@@ -760,25 +442,27 @@ const cancelOrder = (orderid) => {
       confirmButtonText: '确认取消',
       cancelButtonText: '再想想',
       confirmButtonColor: '#ff464e'
-    }).then(() => {
-      disappearingOrderIds.value.add(orderid)
+    })
+      .then(() => {
+        disappearingOrderIds.value.add(orderid)
 
-      setTimeout(() => {
-        pendingPaymentStore.removePendingOrder(orderid)
-        list.value = list.value.filter(o => o.id !== orderid)
-        disappearingOrderIds.value.delete(orderid)
-        showToast('订单已取消')
-      }, 400)
-    }).catch(() => {})
+        setTimeout(() => {
+          pendingPaymentStore.removePendingOrder(orderid)
+          list.value = list.value.filter(o => o.id !== orderid)
+          disappearingOrderIds.value.delete(orderid)
+          showToast('订单已取消')
+        }, 400)
+      })
+      .catch(() => {})
   } else {
     executeAction({
       url: '/order/cancel',
       params: { busid, orderid },
+      orderid,
       confirmTitle: '取消订单',
       confirmMessage: '确认取消该订单？取消后不可恢复',
       successMsg: '订单已取消',
       failMsg: '取消订单失败，请稍后重试',
-      loadingRef: actionLoading,
       onSuccess: () => {
         pendingPaymentStore.removePendingOrder(orderid)
       }
@@ -787,42 +471,50 @@ const cancelOrder = (orderid) => {
 }
 
 /** 催发货 */
-const cuihahuo = () => { showToast('亲，已经在催了哟！') }
+const cuihahuo = () => {
+  showToast('亲，已经在催了哟！')
+}
 
 /** 确认收货 */
-const confirmReceive = (orderid) => {
+const confirmReceive = (orderid: string | number): void => {
   executeAction({
     url: '/order/conrce',
     params: { busid, orderid },
+    orderid,
     confirmTitle: '确认收货提示',
     confirmMessage: '您是否要确认收货',
     successMsg: '确认收货成功',
-    failMsg: '确认收货失败，请稍后重试',
-    loadingRef: actionLoading
+    failMsg: '确认收货失败，请稍后重试'
   })
 }
 
 /** 申请售后 */
-const applyAfterSale = (orderid) => {
+const applyAfterSale = (orderid: string | number): void => {
   executeAction({
     url: '/order/depot',
     params: { busid, orderid },
+    orderid,
     confirmTitle: '退货提示',
     confirmMessage: '您是否要进行退货',
     successMsg: '申请售后成功',
-    failMsg: '申请售后失败，请稍后重试',
-    loadingRef: actionLoading
+    failMsg: '申请售后失败，请稍后重试'
   })
 }
 
 /** 跳转评价页 */
-const eveluate = (id) => { router.push({ path: '/order/eveluate', query: { orderid: id } }) }
+const evaluate = (id: string | number): void => {
+  router.push({ path: '/order/evaluate', query: { orderid: id } })
+}
 
 /** 跳转订单详情 */
-const goinfo = (id) => { router.push({ path: '/order/info', query: { orderid: id } }) }
+const goinfo = (id: string | number): void => {
+  router.push({ path: '/order/info', query: { orderid: id } })
+}
 
 /** 跳转物流查询 */
-const express = (orderid) => { router.push({ path: '/order/express', query: { orderid } }) }
+const express = (orderid: string | number): void => {
+  router.push({ path: '/order/express', query: { orderid } })
+}
 
 onBeforeMount(async () => {
   pendingPaymentStore.clearIncompleteOrders()
@@ -861,3 +553,42 @@ onBeforeUnmount(() => {
   pendingPaymentStore.stopAutoClean()
 })
 </script>
+
+<style scoped>
+.order-list-page {
+  background: var(--bg-color);
+  min-height: 100vh;
+}
+
+.custom-nav {
+  background: var(--primary-gradient);
+}
+
+:deep(.van-nav-bar__title),
+:deep(.van-nav-bar .van-icon) {
+  color: white !important;
+}
+
+:deep(.van-tabs__line) {
+  background-color: var(--primary-color);
+}
+
+:deep(.van-tab--active) {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.order-container {
+  padding: var(--spacing-md);
+}
+
+.go-shop-btn {
+  width: 160px;
+  background: var(--primary-gradient);
+  border: none;
+}
+
+.order-empty {
+  padding: 48px 0 24px;
+}
+</style>

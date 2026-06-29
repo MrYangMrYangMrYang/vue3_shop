@@ -16,17 +16,13 @@
     <van-nav-bar title="订单详情" left-arrow @click-left="back" class="custom-nav" />
 
     <div class="order-content" v-if="list && list.id">
-      <!-- 状态与物流 -->
       <div class="status-card">
         <div class="status-header">
           <van-icon name="clock-o" class="status-icon" />
           <span class="status-text">{{ list.status_text }}</span>
         </div>
 
-        <div
-          v-if="isPendingPayment(list.status) && !isPaymentExpired(list.createtime)"
-          class="countdown-bar"
-        >
+        <div v-if="isPendingPayment(list.status) && !isPaymentExpired(list.createtime)" class="countdown-bar">
           <van-icon name="clock-o" />
           <span>剩余付款时间: {{ countdownText || '计算中...' }}</span>
         </div>
@@ -44,7 +40,6 @@
         <div v-else class="no-express">暂无物流信息</div>
       </div>
 
-      <!-- 地址信息 -->
       <div class="address-card card-item" v-if="list.address">
         <van-icon name="location-o" class="location-icon" />
         <div class="address-details">
@@ -56,11 +51,16 @@
         </div>
       </div>
 
-      <!-- 商品清单 -->
       <div class="goods-card card-item">
         <div class="card-title">商品信息</div>
         <div class="product-item" v-for="pro in prolist" :key="pro.id">
-          <van-card :num="pro.pronum" :price="pro.price" :title="pro.ordproduct.name" :thumb="pro.ordproduct.thumbs_text" />
+          <van-card
+            :num="pro.pronum"
+            :price="pro.price"
+            :title="pro.ordproduct.name"
+            :thumb="pro.ordproduct.thumbs_text"
+            lazy-load
+          />
         </div>
         <div class="contact-service" @click="contacts">
           <van-icon name="chat-o" />
@@ -68,7 +68,6 @@
         </div>
       </div>
 
-      <!-- 支付信息 -->
       <div class="price-card card-item">
         <div class="card-title">支付信息</div>
         <van-cell title="商品总价" :value="'¥' + formatAmount(price)" />
@@ -76,7 +75,6 @@
         <van-cell title="实付款" :value="'¥' + formatAmount(price)" class="total-price" />
       </div>
 
-      <!-- 订单信息 -->
       <div class="order-meta card-item">
         <div class="card-title">订单信息</div>
         <div class="meta-item">
@@ -98,6 +96,180 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { useRouter, useRoute } from 'vue-router'
+import { ref, onBeforeMount, onBeforeUnmount, computed } from 'vue'
+import { POST } from '@/services/request'
+import { showFailToast, showConfirmDialog } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { copyText } from '@/utils/clipboard'
+import { getOrderStatusText, isPendingPayment } from '@/constants/order'
+import { roundToTwo, formatCurrency } from '@/utils/currency'
+import { getRouteQueryValue } from '@/utils/params'
+import { formatDateTime } from '@/utils/date'
+import { isBizFail } from '@/utils/result'
+import { getRemainingTime, isPaymentExpired, formatCountdown } from '@/utils/countdown'
+import { useCompletedLocalOrdersStore } from '@/stores/completedLocalOrders'
+
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const completedLocalOrdersStore = useCompletedLocalOrdersStore()
+
+const login = userStore.userInfo || {}
+const busid = Object.hasOwn(login, 'id') ? login.id : 0
+
+const orderid = getRouteQueryValue(route.query, 'orderid', 0)
+
+const list = ref({})
+const prolist = ref([])
+const contact = ref('')
+const expressData = ref([])
+const countdownText = ref('')
+let countdownTimer = null
+
+const formatAmount = amount => formatCurrency(amount)
+
+const back = () => {
+  router.go(-1)
+}
+
+const copyOrderNo = () => {
+  copyText(list.value.code || '')
+}
+
+const contacts = () => {
+  showConfirmDialog({
+    title: '拨打提醒',
+    message: '是否确认拨打客服电话',
+    confirmButtonColor: '#FF464E'
+  })
+    .then(() => {
+      location.href = `tel:${contact.value}`
+    })
+    .catch(() => {})
+}
+
+const startCountdown = () => {
+  stopCountdown()
+  const tick = () => {
+    if (isPendingPayment(list.value.status) && !isPaymentExpired(list.value.createtime)) {
+      const remaining = getRemainingTime(list.value.createtime)
+      countdownText.value = formatCountdown(remaining)
+      countdownTimer = setTimeout(tick, 1000)
+    } else {
+      countdownText.value = ''
+    }
+  }
+  tick()
+}
+
+const stopCountdown = () => {
+  if (countdownTimer) {
+    clearTimeout(countdownTimer)
+    countdownTimer = null
+  }
+}
+
+onBeforeMount(async () => {
+  const isLocalOrder = String(orderid).startsWith('LOCAL_')
+
+  if (isLocalOrder) {
+    const localOrder = completedLocalOrdersStore.orders.find(o => o.id === orderid)
+
+    if (localOrder) {
+      list.value = {
+        ...localOrder,
+        status_text: localOrder.status_text || getOrderStatusText(localOrder.status),
+        address: null,
+        paytime_text: formatDateTime()
+      }
+
+      prolist.value = [
+        {
+          id: localOrder.id,
+          pronum: 1,
+          price: localOrder.amount,
+          total: localOrder.amount,
+          ordproduct: {
+            name: localOrder.name_text || '未知商品',
+            thumbs_text: localOrder.thumbs_text || ''
+          }
+        }
+      ]
+
+      expressData.value = null
+    } else {
+      showFailToast('本地订单信息不存在')
+      setTimeout(() => router.go(-1), 1500)
+    }
+  } else {
+    await Promise.allSettled([getInfo(), expressinfo(), getproductinfo()])
+    startCountdown()
+  }
+})
+
+onBeforeUnmount(() => {
+  stopCountdown()
+})
+
+const getInfo = async () => {
+  try {
+    const result = await POST({
+      url: '/order/addressinfo',
+      params: { busid: busid, orderid: orderid }
+    })
+    if (isBizFail(result) || !result.data) {
+      showFailToast(result.msg || '订单信息加载失败')
+      return
+    }
+    const data = result.data
+    if (data) {
+      data.status_text = getOrderStatusText(data.status)
+    }
+    list.value = data
+  } catch (error) {
+    showFailToast('订单信息加载失败，请稍后重试')
+  }
+}
+
+const expressinfo = async () => {
+  try {
+    const result = await POST({
+      url: '/order/express',
+      params: { busid: busid, orderid: orderid }
+    })
+    expressData.value = isBizFail(result) ? null : result.data
+  } catch (error) {
+    expressData.value = null
+  }
+}
+
+const getproductinfo = async () => {
+  try {
+    const result = await POST({
+      url: '/order/proinfo',
+      params: { busid: busid, orderid: orderid }
+    })
+    if (isBizFail(result) || !result.data) {
+      return
+    }
+    contact.value = result.data.contact
+    prolist.value = result.data.prolist || []
+  } catch (error) {
+    prolist.value = []
+  }
+}
+
+const price = computed(() => {
+  let count = 0
+  prolist.value.map(item => {
+    count += roundToTwo(item.total)
+  })
+  return roundToTwo(count)
+})
+</script>
 
 <style scoped>
 .order-info-page {
@@ -316,192 +488,3 @@
   color: var(--primary-color);
 }
 </style>
-
-<script setup>
-import { useRouter, useRoute } from 'vue-router'
-import { ref, onBeforeMount, onBeforeUnmount, computed } from 'vue'
-import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
-import { useUserStore } from '@/stores/user'
-import { copyText } from '@/utils/clipboard'
-import {
-  ORDER_STATUS,
-  getOrderStatusText,
-  isPendingPayment,
-  isCancelled
-} from '@/constants/order'
-import { roundToTwo, formatCurrency } from '@/utils/currency'
-import { getRouteQueryValue } from '@/utils/params'
-import { isBizFail } from '@/utils/result'
-import { getRemainingTime, isPaymentExpired, formatCountdown } from '@/utils/countdown'
-import { useCompletedLocalOrdersStore } from '@/stores/completedLocalOrders'
-
-const router = useRouter()
-const route = useRoute()
-const userStore = useUserStore()
-const completedLocalOrdersStore = useCompletedLocalOrdersStore()
-
-const login = userStore.userInfo || {}
-const busid = login.hasOwnProperty('id') ? login.id : 0
-
-const orderid = getRouteQueryValue(route.query, 'orderid', 0)
-
-const list = ref({})
-const prolist = ref([])
-const contact = ref('')
-const expressData = ref([])
-const countdownText = ref('')
-let countdownTimer = null
-
-const formatAmount = (amount) => formatCurrency(amount)
-
-const back = () => {
-  router.go(-1)
-}
-
-const copyOrderNo = () => {
-  copyText(list.value.code || '')
-}
-
-const contacts = () => {
-  showConfirmDialog({
-    title: '拨打提醒',
-    message: '是否确认拨打客服电话',
-    confirmButtonColor: '#FF464E'
-  })
-    .then(() => {
-      location.href = `tel:${contact.value}`
-    })
-    .catch(() => {})
-}
-
-const startCountdown = () => {
-  stopCountdown()
-  const tick = () => {
-    if (isPendingPayment(list.value.status) && !isPaymentExpired(list.value.createtime)) {
-      const remaining = getRemainingTime(list.value.createtime)
-      countdownText.value = formatCountdown(remaining)
-      countdownTimer = setTimeout(tick, 1000)
-    } else {
-      countdownText.value = ''
-    }
-  }
-  tick()
-}
-
-const stopCountdown = () => {
-  if (countdownTimer) {
-    clearTimeout(countdownTimer)
-    countdownTimer = null
-  }
-}
-
-const refreshData = async () => {
-  await Promise.allSettled([
-    getInfo(),
-    expressinfo(),
-    getproductinfo()
-  ])
-  startCountdown()
-}
-
-onBeforeMount(async () => {
-  const isLocalOrder = String(orderid).startsWith('LOCAL_')
-  
-  if (isLocalOrder) {
-    const localOrder = completedLocalOrdersStore.orders.find(o => o.id === orderid)
-    
-    if (localOrder) {
-      list.value = {
-        ...localOrder,
-        status_text: localOrder.status_text || getOrderStatusText(localOrder.status),
-        address: null,
-        paytime_text: new Date().toLocaleString('zh-CN')
-      }
-      
-      prolist.value = [{
-        id: localOrder.id,
-        pronum: 1,
-        price: localOrder.amount,
-        total: localOrder.amount,
-        ordproduct: {
-          name: localOrder.name_text || '未知商品',
-          thumbs_text: localOrder.thumbs_text || ''
-        }
-      }]
-      
-      expressData.value = null
-    } else {
-      showFailToast('本地订单信息不存在')
-      setTimeout(() => router.go(-1), 1500)
-    }
-  } else {
-    await Promise.allSettled([
-      getInfo(),
-      expressinfo(),
-      getproductinfo()
-    ])
-    startCountdown()
-  }
-})
-
-onBeforeUnmount(() => {
-  stopCountdown()
-})
-
-const getInfo = async () => {
-  try {
-    const result = await POST({
-      url: '/order/addressinfo',
-      params: { busid: busid, orderid: orderid },
-    })
-    if (isBizFail(result) || !result.data) {
-      showFailToast(result.msg || '订单信息加载失败')
-      return
-    }
-    const data = result.data
-    if (data) {
-      data.status_text = getOrderStatusText(data.status)
-    }
-    list.value = data
-  } catch (error) {
-    showFailToast('订单信息加载失败，请稍后重试')
-  }
-}
-
-const expressinfo = async () => {
-  try {
-    const result = await POST({
-      url: '/order/express',
-      params: { busid: busid, orderid: orderid },
-    })
-    expressData.value = isBizFail(result) ? null : result.data
-  } catch (error) {
-    expressData.value = null
-  }
-}
-
-const getproductinfo = async () => {
-  try {
-    const result = await POST({
-      url: '/order/proinfo',
-      params: { busid: busid, orderid: orderid },
-    })
-    if (isBizFail(result) || !result.data) {
-      return
-    }
-    contact.value = result.data.contact
-    prolist.value = result.data.prolist || []
-  } catch (error) {
-    prolist.value = []
-  }
-}
-
-const price = computed(() => {
-  let count = 0
-  prolist.value.map((item) => {
-    count += roundToTwo(item.total)
-  })
-  return roundToTwo(count)
-})
-</script>

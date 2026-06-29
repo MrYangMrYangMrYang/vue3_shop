@@ -12,22 +12,14 @@
 -->
 <template>
   <div class="address-page">
-    <van-nav-bar
-      title="我的收货地址"
-      left-arrow
-      @click-left="back"
-      class="custom-nav"
-    />
+    <van-nav-bar title="我的收货地址" left-arrow @click-left="back" class="custom-nav" />
 
     <div class="address-container">
       <div v-if="loading" class="skeleton-wrapper">
         <van-skeleton v-for="i in 3" :key="i" title :row="2" class="skeleton-card" />
       </div>
 
-      <div
-        v-else-if="list.length > 0 && actionType === 'order'"
-        class="address-list-wrapper order-select-list"
-      >
+      <div v-else-if="list.length > 0 && actionType === 'order'" class="address-list-wrapper order-select-list">
         <div
           v-for="item in list"
           :key="item.id"
@@ -43,21 +35,12 @@
             </div>
             <div class="order-address-text">{{ item.address }}</div>
           </div>
-          <van-icon
-            name="edit"
-            class="order-address-edit"
-            @click.stop="edit(item)"
-          />
+          <van-icon name="edit" class="order-address-edit" @click.stop="edit(item)" />
         </div>
-        <van-button round type="primary" class="bottom-button order-add-btn" @click="add">
-          新增地址
-        </van-button>
+        <van-button round type="primary" class="bottom-button order-add-btn" @click="add">新增地址</van-button>
       </div>
 
-      <div
-        v-else-if="list.length > 0"
-        class="address-list-wrapper"
-      >
+      <div v-else-if="list.length > 0" class="address-list-wrapper">
         <van-address-list
           v-model="active"
           :list="list"
@@ -69,20 +52,159 @@
           class="custom-address-list"
         />
       </div>
-      
-      <van-empty
-        v-if="!loading && list.length === 0"
-        image="network"
-        description="暂无收货地址"
-      >
-        <van-button round type="primary" class="bottom-button" @click="add">
-          新增地址
-        </van-button>
+
+      <van-empty v-if="!loading && list.length === 0" image="network" description="暂无收货地址">
+        <van-button round type="primary" class="bottom-button" @click="add">新增地址</van-button>
       </van-empty>
     </div>
   </div>
 </template>
 
+<script setup>
+import { useRouter, useRoute } from 'vue-router'
+import { reactive, ref, onBeforeMount, nextTick } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { POST } from '@/services/request'
+import { showSuccessToast, showFailToast } from 'vant'
+import { getRouteQueryValue } from '@/utils/params'
+import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
+
+const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
+
+const business = userStore.userInfo || {}
+const list = reactive([])
+const active = ref('')
+const loading = ref(true)
+const handlingOrderSelect = ref(false)
+
+const action = getRouteQueryValue(route.query, 'action', '')
+const fromCartids = getRouteQueryValue(route.query, 'cartids', '')
+const fromCheckoutAction = getRouteQueryValue(route.query, 'checkout_action', '')
+const actionType = ref(action)
+
+const back = useBack()
+
+/** 新增地址（最多10个） */
+const add = () => {
+  if (list.length >= 10) {
+    showFailToast('最多添加10个收货地址')
+    return
+  }
+  router.push('/business/address/add')
+}
+
+/** 编辑地址 */
+const edit = item => {
+  router.push({ path: '/business/address/edit', query: { id: item.id } })
+}
+
+/** 切换默认地址 */
+const select = async (item, index) => {
+  try {
+    const data = { busid: business.id, id: item.id }
+    const result = await POST({ url: '/address/toggle', params: data })
+    if (isBizFail(result)) {
+      showFailToast(result.msg)
+      return false
+    }
+
+    active.value = item.id
+    list.map(item => {
+      item.isDefault = false
+    })
+    list[index].isDefault = true
+    showSuccessToast('已设为默认地址')
+  } catch (error) {
+    showFailToast('设置默认地址失败，请稍后重试')
+  }
+}
+
+/** 下单场景：选择地址并跳转结算页 */
+const order = async item => {
+  if (handlingOrderSelect.value) return
+
+  handlingOrderSelect.value = true
+  try {
+    const selectedItem = item?.id ? item : item?.item
+    const selectedId = Number(selectedItem?.id) || selectedItem?.id
+    if (!selectedId) {
+      showFailToast('地址信息异常，请重新选择')
+      return
+    }
+
+    active.value = selectedId
+    userStore.setSelectedAddressId(selectedId)
+    userStore.setSelectedAddress({
+      id: selectedId,
+      name: selectedItem?.name || '',
+      tel: selectedItem?.tel || '',
+      address: selectedItem?.address || ''
+    })
+
+    await nextTick()
+    await router.push({
+      path: '/cart/confirm',
+      query: {
+        cartids: fromCartids,
+        action: fromCheckoutAction,
+        selected_addr_id: selectedId
+      }
+    })
+  } finally {
+    handlingOrderSelect.value = false
+  }
+}
+
+/** 下单场景：点击地址项 */
+const handleOrderClickItem = async item => {
+  const selectedItem = item?.id ? item : item?.item
+  if (!selectedItem?.id) return
+  await order(selectedItem)
+}
+
+/** 下单场景：选择地址按钮 */
+const handleOrderChoose = async item => {
+  await order(item)
+}
+
+/** 加载地址列表 */
+onBeforeMount(async () => {
+  loading.value = true
+  try {
+    const result = await POST({ url: '/address/index', params: { busid: business.id } })
+
+    if (isBizFail(result) || !result.data || result.data.length <= 0) return false
+
+    for (const item of result.data) {
+      const status = item.status == '1'
+      if (status) active.value = item.id
+      list.push({
+        id: item.id,
+        name: item.consignee,
+        tel: item.mobile,
+        address: `${item.address_text} ${item.address}`,
+        isDefault: status
+      })
+    }
+
+    // 下单模式：恢复已选地址
+    if (actionType.value === 'order' && userStore.selectedAddressId) {
+      const selectedId = Number(userStore.selectedAddressId) || userStore.selectedAddressId
+      const hasSelected = list.some(item => String(item.id) === String(selectedId))
+      if (hasSelected) active.value = selectedId
+    }
+  } catch (error) {
+    showFailToast('地址列表加载失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
+<!-- 不加 scoped，强制覆盖 primary 按钮样式 -->
 <style scoped>
 .address-page {
   min-height: 100vh;
@@ -173,7 +295,6 @@
   padding: 60px 0;
 }
 
-
 .order-address-item {
   display: flex;
   align-items: center;
@@ -240,15 +361,13 @@
   margin: 0 !important;
   z-index: 20;
 }
-
 </style>
 
-<!-- 不加 scoped，强制覆盖 primary 按钮样式 -->
 <style>
 /* 地址列表底部的新增按钮 - primary 类型 */
 .van-address-list__bottom .van-button--primary,
 .van-button--primary {
-  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%) !important;
+  background: linear-gradient(135deg, #ff464e 0%, #ff8a5c 100%) !important;
   border: none !important;
   border-radius: 30px !important;
   height: 44px !important;
@@ -264,7 +383,7 @@
 
 /* 空状态的自定义按钮 */
 .bottom-button {
-  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%) !important;
+  background: linear-gradient(135deg, #ff464e 0%, #ff8a5c 100%) !important;
   border: none !important;
   border-radius: 30px !important;
   color: white !important;
@@ -278,132 +397,3 @@
   opacity: 0.9 !important;
 }
 </style>
-
-<script setup>
-import { useRouter, useRoute } from 'vue-router'
-import { reactive, ref, onBeforeMount, nextTick } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast } from 'vant'
-import { getRouteQueryValue } from '@/utils/params'
-import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
-
-const userStore = useUserStore()
-const router = useRouter()
-const route = useRoute()
-
-const business = userStore.userInfo || {}
-const list = reactive([])
-const active = ref('')
-const loading = ref(true)
-const handlingOrderSelect = ref(false)
-
-const action = getRouteQueryValue(route.query, 'action', '')
-const fromCartids = getRouteQueryValue(route.query, 'cartids', '')
-const fromCheckoutAction = getRouteQueryValue(route.query, 'checkout_action', '')
-const actionType = ref(action)
-
-const back = useBack()
-
-/** 新增地址（最多10个） */
-const add = () => {
-  if (list.length >= 10) { showFailToast('最多添加10个收货地址'); return }
-  router.push('/business/address/add')
-}
-
-/** 编辑地址 */
-const edit = (item) => { router.push({ path: '/business/address/edit', query: { id: item.id } }) }
-
-/** 切换默认地址 */
-const select = async (item, index) => {
-  try {
-    const data = { busid: business.id, id: item.id }
-    const result = await POST({ url: '/address/toggle', params: data })
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
-
-    active.value = item.id
-    list.map((item) => { item.isDefault = false })
-    list[index].isDefault = true
-    showSuccessToast('已设为默认地址')
-  } catch (error) {
-    showFailToast('设置默认地址失败，请稍后重试')
-  }
-}
-
-/** 下单场景：选择地址并跳转结算页 */
-const order = async (item) => {
-  if (handlingOrderSelect.value) return
-
-  handlingOrderSelect.value = true
-  try {
-    const selectedItem = item?.id ? item : item?.item
-    const selectedId = Number(selectedItem?.id) || selectedItem?.id
-    if (!selectedId) { showFailToast('地址信息异常，请重新选择'); return }
-
-    active.value = selectedId
-    userStore.setSelectedAddressId(selectedId)
-    userStore.setSelectedAddress({
-      id: selectedId,
-      name: selectedItem?.name || '',
-      tel: selectedItem?.tel || '',
-      address: selectedItem?.address || ''
-    })
-
-    await nextTick()
-    await router.push({
-      path: '/cart/confirm',
-      query: {
-        cartids: fromCartids,
-        action: fromCheckoutAction,
-        selected_addr_id: selectedId
-      }
-    })
-  } finally {
-    handlingOrderSelect.value = false
-  }
-}
-
-/** 下单场景：点击地址项 */
-const handleOrderClickItem = async (item) => {
-  const selectedItem = item?.id ? item : item?.item
-  if (!selectedItem?.id) return
-  await order(selectedItem)
-}
-
-/** 下单场景：选择地址按钮 */
-const handleOrderChoose = async (item) => { await order(item) }
-
-/** 加载地址列表 */
-onBeforeMount(async () => {
-  loading.value = true
-  try {
-    const result = await POST({ url: '/address/index', params: { busid: business.id } })
-
-    if (isBizFail(result) || !result.data || result.data.length <= 0) return false
-
-    for (const item of result.data) {
-      const status = item.status == '1'
-      if (status) active.value = item.id
-      list.push({
-        id: item.id,
-        name: item.consignee,
-        tel: item.mobile,
-        address: `${item.address_text} ${item.address}`,
-        isDefault: status
-      })
-    }
-
-    // 下单模式：恢复已选地址
-    if (actionType.value === 'order' && userStore.selectedAddressId) {
-      const selectedId = Number(userStore.selectedAddressId) || userStore.selectedAddressId
-      const hasSelected = list.some(item => String(item.id) === String(selectedId))
-      if (hasSelected) active.value = selectedId
-    }
-  } catch (error) {
-    showFailToast('地址列表加载失败，请稍后重试')
-  } finally {
-    loading.value = false
-  }
-})
-</script>

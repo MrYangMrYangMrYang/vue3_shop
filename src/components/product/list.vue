@@ -14,12 +14,7 @@
   <div class="list-page">
     <van-sticky>
       <div class="nav-header">
-        <van-nav-bar
-          :title="TypeName"
-          left-arrow
-          left-text="返回"
-          @click-left="back"
-        >
+        <van-nav-bar :title="TypeName" left-arrow left-text="返回" @click-left="back">
           <template #right>
             <van-icon name="search" size="20" @click="SearchShow = true" />
           </template>
@@ -27,7 +22,15 @@
 
         <van-popup v-model:show="SearchShow" position="top" :style="{ height: 'auto' }">
           <div class="search-box">
-            <van-search @search="search" @click-action="search(keywords)" v-model="keywords" placeholder="请输入搜索关键词" shape="round" background="#fff" show-action>
+            <van-search
+              @search="search"
+              @click-action="search(keywords)"
+              v-model="keywords"
+              placeholder="请输入搜索关键词"
+              shape="round"
+              background="#fff"
+              show-action
+            >
               <template #action>
                 <div class="search-action" @click="search(keywords)">搜索</div>
               </template>
@@ -55,30 +58,23 @@
       >
         <ul class="product-list" v-if="list.length > 0">
           <li v-for="item in list" :key="item.id" class="product-item">
-            <router-link :to="{path: '/product/info', query:{proid: item.id}}" class="product-link">
+            <router-link :to="{ path: '/product/info', query: { proid: item.id } }" class="product-link">
               <div class="img-wrapper">
                 <img v-lazy="item.thumbs_text" />
               </div>
               <div class="product-content">
-                <p class="title">{{item.name}}</p>
+                <p class="title">{{ item.name }}</p>
                 <div class="bottom-row">
-                  <span class="price">{{item.price}}</span>
-                  <span class="sales">销量 {{item.sales || 0}}</span>
+                  <span class="price">{{ item.price }}</span>
+                  <span class="sales">销量 {{ item.sales || 0 }}</span>
                 </div>
               </div>
             </router-link>
           </li>
         </ul>
 
-        <!-- 空状态 -->
-        <van-empty
-          v-else-if="!loading && finished"
-          description="没有找到相关商品"
-          image="search"
-        >
-          <van-button round type="primary" class="back-home-btn" @click="resetFilters">
-            查看全部商品
-          </van-button>
+        <van-empty v-else-if="!loading && finished" description="没有找到相关商品" image="search">
+          <van-button round type="primary" class="back-home-btn" @click="resetFilters">查看全部商品</van-button>
         </van-empty>
       </van-list>
     </van-pull-refresh>
@@ -90,8 +86,6 @@
 </template>
 
 <script setup>
-// 商品列表页：
-// 负责分类筛选、搜索、分页加载、返回态恢复与列表状态缓存。
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated, onDeactivated } from 'vue'
 import { POST } from '@/services/request'
@@ -104,62 +98,60 @@ import { useBack } from '@/hooks'
 import { debounce } from '@/utils/debounce'
 
 defineOptions({
-  name: 'product-list'
+  name: 'ProductList'
 })
 
 const route = useRoute()
 const back = useBack()
 
 /** 解析分类ID，无效值返回0 */
-const parseTypeId = (value) => {
+const parseTypeId = value => {
   const parsed = parseInt(value, 10)
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
-let TypeActive = ref(parseTypeId(getRouteQueryValue(route.query, 'typeid', 0)))
-let list = ref([])
-let loading = ref(false)
-let finished = ref(false)
-let refreshing = ref(false)
-let page = ref(1)
-let TypeName = ref('全部商品')
-let FlagActive = ref('0')
-let SortActive = ref('createtime')
-let ByActive = ref('desc')
-let SearchShow = ref(false)
-let keywords = ref(getRouteQueryValue(route.query, 'keywords', ''))
-let isFirstLoad = ref(true)
-let isLoading = ref(false)
-let isFromDetail = ref(false)
+const TypeActive = ref(parseTypeId(getRouteQueryValue(route.query, 'typeid', 0)))
+const list = ref([])
+const loading = ref(false)
+const finished = ref(false)
+const refreshing = ref(false)
+const page = ref(1)
+const TypeName = ref('全部商品')
+const FlagActive = ref('0')
+const SortActive = ref('createtime')
+const ByActive = ref('desc')
+const SearchShow = ref(false)
+const keywords = ref(getRouteQueryValue(route.query, 'keywords', ''))
+const isFirstLoad = ref(true)
+const isLoading = ref(false)
+const isFromDetail = ref(false)
 let lastRouteQuery = {}
 const LIST_STATE_CACHE_KEY = 'product:list:view-state'
 
-let FlagList = [
+const FlagList = [
   { text: '全部商品', value: '0' },
   { text: '新品', value: '1' },
   { text: '热销', value: '2' },
-  { text: '推荐', value: '3' },
-];
+  { text: '推荐', value: '3' }
+]
 
-let TypeList = ref([
-  { text: '全部分类', value: 0 }
-]);
+const TypeList = ref([{ text: '全部分类', value: 0 }])
 const TYPE_CACHE_KEY = 'product:type:list'
 const TYPE_CACHE_TTL = 5 * 60 * 1000
 
-let SortList = [
+const SortList = [
   { text: '上架时间', value: 'createtime' },
   { text: '价格', value: 'price' },
   { text: '库存', value: 'stock' }
-];
+]
 
-let ByList = [
+const ByList = [
   { text: '降序', value: 'desc' },
-  { text: '升序', value: 'asc' },
-];
+  { text: '升序', value: 'asc' }
+]
 
 /** 切换分类并刷新列表 */
-const TypeToggle = async (value) => {
+const TypeToggle = async value => {
   TypeActive.value = value
   keywords.value = ''
   isFromDetail.value = false
@@ -167,21 +159,21 @@ const TypeToggle = async (value) => {
 }
 
 /** 切换标签（新品/热销/推荐）并刷新列表 */
-const FlagToggle = async (value) => {
+const FlagToggle = async value => {
   FlagActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
 /** 切换排序字段并刷新列表 */
-const SortToggle = async (value) => {
+const SortToggle = async value => {
   SortActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
 /** 切换排序方向（升序/降序）并刷新列表 */
-const ByToggle = async (value) => {
+const ByToggle = async value => {
   ByActive.value = value
   isFromDetail.value = false
   await refresh()
@@ -198,7 +190,7 @@ const resetFilters = async () => {
 }
 
 /** 搜索商品并刷新列表（防抖） */
-const search = debounce(async (value) => {
+const search = debounce(async value => {
   SearchShow.value = false
   keywords.value = value
   TypeActive.value = 0
@@ -223,17 +215,21 @@ const restoreListState = () => {
 
 /** 保存列表状态到缓存 */
 const saveListState = () => {
-  setCache(LIST_STATE_CACHE_KEY, {
-    typeActive: TypeActive.value,
-    flagActive: FlagActive.value,
-    sortActive: SortActive.value,
-    byActive: ByActive.value,
-    keywords: keywords.value,
-    page: page.value,
-    finished: finished.value,
-    list: list.value,
-    scrollTop: window.scrollY || 0
-  }, 10 * 60 * 1000)
+  setCache(
+    LIST_STATE_CACHE_KEY,
+    {
+      typeActive: TypeActive.value,
+      flagActive: FlagActive.value,
+      sortActive: SortActive.value,
+      byActive: ByActive.value,
+      keywords: keywords.value,
+      page: page.value,
+      finished: finished.value,
+      list: list.value,
+      scrollTop: window.scrollY || 0
+    },
+    10 * 60 * 1000
+  )
 }
 
 /** 下拉刷新，重置分页并重新加载 */
@@ -269,7 +265,7 @@ const ListData = async () => {
   isLoading.value = true
 
   try {
-    var result = await POST({
+    const result = await POST({
       url: '/index/list',
       params: {
         typeid: TypeActive.value,
@@ -286,7 +282,7 @@ const ListData = async () => {
     TypeName.value = data.TypeName || '全部商品'
 
     if (isBizFail(result) || !data.list || data.list.length <= 0) {
-      finished.value = true;
+      finished.value = true
     } else {
       if (page.value === 1) {
         list.value = data.list
@@ -313,19 +309,17 @@ const type = async () => {
   }
 
   try {
-    var result = await POST({
+    const result = await POST({
       url: '/index/type'
     })
 
-    TypeList.value = [
-      { text: '全部分类', value: 0 }
-    ];
+    TypeList.value = [{ text: '全部分类', value: 0 }]
 
     if (Array.isArray(result.data) && result.data.length) {
-      for (var item of result.data) {
+      for (const item of result.data) {
         TypeList.value.push({
           text: item.name,
-          value: parseInt(item.id)
+          value: parseInt(item.id, 10)
         })
       }
     }
@@ -335,25 +329,30 @@ const type = async () => {
   }
 }
 
-watch(() => route.query.typeid, (newTypeId, oldTypeId) => {
-  if (newTypeId !== oldTypeId && !isFirstLoad.value) {
-    TypeActive.value = parseTypeId(newTypeId)
-    isFromDetail.value = false
-    refresh()
+watch(
+  () => route.query.typeid,
+  (newTypeId, oldTypeId) => {
+    if (newTypeId !== oldTypeId && !isFirstLoad.value) {
+      TypeActive.value = parseTypeId(newTypeId)
+      isFromDetail.value = false
+      refresh()
+    }
   }
-})
+)
 
-watch(() => route.query.keywords, (newKeywords, oldKeywords) => {
-  if (newKeywords !== oldKeywords && !isFirstLoad.value) {
-    keywords.value = newKeywords || ''
-    isFromDetail.value = false
-    refresh()
+watch(
+  () => route.query.keywords,
+  (newKeywords, oldKeywords) => {
+    if (newKeywords !== oldKeywords && !isFirstLoad.value) {
+      keywords.value = newKeywords || ''
+      isFromDetail.value = false
+      refresh()
+    }
   }
-})
+)
 
 onActivated(() => {
-  const queryChanged = route.query.typeid !== lastRouteQuery.typeid
-    || route.query.keywords !== lastRouteQuery.keywords
+  const queryChanged = route.query.typeid !== lastRouteQuery.typeid || route.query.keywords !== lastRouteQuery.keywords
 
   if (!queryChanged) {
     if (restoreListState()) {
@@ -427,7 +426,7 @@ onMounted(async () => {
 
 <style scoped>
 .list-page {
-  background: #F7F8FA;
+  background: #f7f8fa;
   min-height: 100vh;
   padding-bottom: 70px;
 }
@@ -523,7 +522,9 @@ onMounted(async () => {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(255, 70, 78, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .product-item:active {
@@ -541,7 +542,7 @@ onMounted(async () => {
   padding-bottom: 85%;
   position: relative;
   overflow: hidden;
-  background: #F7F8FA;
+  background: #f7f8fa;
 }
 
 .img-wrapper img {
@@ -594,7 +595,7 @@ onMounted(async () => {
 }
 
 :deep(.van-back-top) {
-  background: linear-gradient(135deg, #FF464E 0%, #FF8A5C 100%);
+  background: linear-gradient(135deg, #ff464e 0%, #ff8a5c 100%);
   box-shadow: 0 4px 16px rgba(255, 70, 78, 0.4);
 }
 

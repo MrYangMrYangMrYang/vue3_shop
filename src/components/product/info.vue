@@ -13,128 +13,142 @@
 <template>
   <div class="product-info-page">
     <van-sticky>
-      <!-- 导航栏 -->
-      <van-nav-bar
-        :title="product.name"
-        left-arrow
-        @click-left="back"
-      >
+      <van-nav-bar :title="product.name || '商品详情'" left-arrow @click-left="back">
         <template #right>
           <van-icon name="share-o" size="20" @click="ShareShow = true" />
         </template>
       </van-nav-bar>
     </van-sticky>
 
-    <!-- 分享面板 -->
-    <van-share-sheet
-      v-model:show="ShareShow"
-      title="立即分享"
-      :options="options"
-      @select="share"
-    />
+    <van-share-sheet v-model:show="ShareShow" title="立即分享" :options="options" @select="share" />
 
-    <!-- 商品图片 - 固定比例 + 点击预览 -->
-    <div class="banner" @click="previewImage">
-      <img :src="product.thumbs_text" class="banner-img" />
-    </div>
-
-    <!-- 商品信息（不再使用负边距，不会压住图片） -->
-    <div class="info-card">
-      <div class="price-section">
-        <span class="currency">¥</span>
-        <span class="amount">{{ product.price }}</span>
-        <div class="stock-tag">库存: {{ product.stock }} {{ product.unit ? product.unit.name : '' }}</div>
+    <!-- 首屏骨架屏 -->
+    <div v-if="loading" class="info-skeleton">
+      <van-skeleton-image image-size="100%" class="sk-banner" />
+      <div class="sk-info-card">
+        <div class="sk-price">
+          <van-skeleton-title title-width="40%" />
+        </div>
+        <van-skeleton-paragraph :row-width="['100%', '80%', '60%'] as any" />
+        <div class="sk-tags">
+          <van-skeleton-title v-for="i in 3" :key="i" title-width="60px" />
+        </div>
       </div>
-      <h1 class="product-title">{{ product.name }}</h1>
-      <div class="service-tags">
-        <van-tag plain type="primary" round>正品保证</van-tag>
-        <van-tag plain type="primary" round>七天无理由</van-tag>
-        <van-tag plain type="primary" round>极速退款</van-tag>
+      <div class="sk-detail">
+        <van-skeleton-title title-width="30%" />
+        <van-skeleton-paragraph :row-width="['100%', '100%', '90%', '70%'] as any" />
       </div>
     </div>
 
-    <!-- 商品参数/详情 -->
-    <div class="detail-section">
-      <div class="section-title">
-        <span class="line"></span>
-        <span class="text">商品详情</span>
-        <span class="line"></span>
-      </div>
-      <div class="rich-content" v-html="product.content"></div>
-    </div>
+    <!-- 网络错误占位 -->
+    <NetworkError v-else-if="hasError" @retry="retryProductInfo" />
 
-    <!-- 动作栏 -->
-    <van-action-bar>
-      <van-action-bar-icon icon="chat-o" text="客服" @click="contact" />
-      <router-link to="/cart/index">
-        <van-action-bar-icon icon="cart-o" text="购物车" :badge="count > 0 ? count : null" />
-      </router-link>
-      <van-action-bar-button 
-        type="warning" 
-        text="加入购物车" 
-        @click="AddCart"
-        class="btn-left"
-      />
-      <van-action-bar-button 
-        type="danger" 
-        text="立即购买" 
-        @click="Buy"
-        class="btn-right"
-      />
-    </van-action-bar>
+    <template v-else>
+      <div class="banner" @click="previewImage">
+        <img v-lazy="product.thumbs_text" class="banner-img" />
+      </div>
+
+      <div class="info-card">
+        <div class="price-section">
+          <span class="currency">¥</span>
+          <span class="amount">{{ product.price }}</span>
+          <div class="stock-tag">库存: {{ product.stock }} {{ product.unit ? product.unit.name : '' }}</div>
+        </div>
+        <h1 class="product-title">{{ product.name }}</h1>
+        <div class="service-tags">
+          <van-tag plain type="primary" round>正品保证</van-tag>
+          <van-tag plain type="primary" round>七天无理由</van-tag>
+          <van-tag plain type="primary" round>极速退款</van-tag>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="section-title">
+          <span class="line"></span>
+          <span class="text">商品详情</span>
+          <span class="line"></span>
+        </div>
+        <div class="rich-content" v-html="sanitizedContent"></div>
+      </div>
+
+      <van-action-bar safe-area-inset-bottom>
+        <van-action-bar-icon icon="chat-o" text="客服" @click="contact" />
+        <router-link to="/cart/index">
+          <van-action-bar-icon icon="cart-o" text="购物车" :badge="count > 0 ? count : ''" />
+        </router-link>
+        <van-action-bar-button type="warning" text="加入购物车" @click="AddCart" class="btn-left" />
+        <van-action-bar-button type="danger" text="立即购买" @click="Buy" class="btn-right" />
+      </van-action-bar>
+
+      <!-- SKU 规格与数量选择弹窗 -->
+      <SkuPanel v-model="skuVisible" :product="product" @confirm="onSkuConfirm" />
+    </template>
   </div>
 </template>
 
-<script setup>
-defineOptions({ name: 'product-info' })
+<script setup lang="ts">
+defineOptions({ name: 'ProductInfo' })
 
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onBeforeMount, computed } from 'vue'
 import { POST } from '@/services/request'
-import { showSuccessToast, showFailToast, showConfirmDialog, showImagePreview, showDialog } from 'vant'
+import { showFailToast, showConfirmDialog, showImagePreview, showDialog, showToast } from 'vant'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { useBack } from '@/hooks'
+import DOMPurify from 'dompurify'
+import NetworkError from '@/components/common/NetworkError.vue'
+import SkuPanel from '@/components/product/SkuPanel.vue'
+import { copyText } from '@/utils/clipboard'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 
-/** 用户ID */
 const login = userStore.userInfo || {}
-const businessId = login.hasOwnProperty('id') ? login.id : 0
+const businessId = Object.hasOwn(login, 'id') ? (login.id ?? 0) : 0
 
 const productId = getRouteQueryValue(route.query, 'proid', 0)
-const product = ref({})
+const product = ref<Record<string, any>>({})
+const loading = ref(true)
+const hasError = ref(false)
 const count = computed(() => cartStore.count)
+
+/** 商品详情富文本（XSS 净化） */
+const sanitizedContent = computed(() => DOMPurify.sanitize(product.value.content || ''))
 const mobile = ref('')
 const ShareShow = ref(false)
 const cartId = ref('')
+const skuVisible = ref(false)
+const skuAction = ref('')
 
 const options = [
   [
     { name: '微信', icon: 'wechat' },
     { name: '朋友圈', icon: 'wechat-moments' },
     { name: '微博', icon: 'weibo' },
-    { name: 'QQ', icon: 'qq' },
+    { name: 'QQ', icon: 'qq' }
   ],
   [
     { name: '复制链接', icon: 'link' },
     { name: '分享海报', icon: 'poster' },
     { name: '二维码', icon: 'qrcode' },
-    { name: '小程序码', icon: 'weapp-qrcode' },
-  ],
+    { name: '小程序码', icon: 'weapp-qrcode' }
+  ]
 ]
 
-onBeforeMount(async () => { await ProductInfo() })
+onBeforeMount(async () => {
+  await ProductInfo()
+})
 
 const back = useBack()
 
 /** 加载商品详情 */
 const ProductInfo = async () => {
+  hasError.value = false
   try {
     const result = await POST({
       url: '/index/info',
@@ -144,7 +158,9 @@ const ProductInfo = async () => {
     if (isBizFail(result) || !result.data || !result.data.product) {
       showFailToast({
         message: result.msg || '商品信息加载失败',
-        onClose: () => { router.go(-1) }
+        onClose: () => {
+          router.go(-1)
+        }
       })
       return false
     }
@@ -153,8 +169,16 @@ const ProductInfo = async () => {
     cartStore.setCount(result.data.count || 0)
     mobile.value = result.data.contact || ''
   } catch (error) {
-    showFailToast('商品信息加载失败，请稍后重试')
+    hasError.value = true
+  } finally {
+    loading.value = false
   }
+}
+
+/** 重试加载商品详情 */
+const retryProductInfo = () => {
+  loading.value = true
+  ProductInfo()
 }
 
 /** 图片预览 */
@@ -168,25 +192,81 @@ const contact = async () => {
     title: '拨打提醒',
     message: '是否确认拨打客服电话',
     confirmButtonColor: '#FF464E'
-  }).then(() => { location.href = `tel:${mobile.value}` }).catch(() => {})
+  })
+    .then(() => {
+      location.href = `tel:${mobile.value}`
+    })
+    .catch(() => {})
 }
 
-/** 分享弹窗关闭 */
-const share = async (option) => { ShareShow.value = false }
+/** 分享商品：复制链接直接写剪贴板，社交平台优先 Web Share API（不支持则降级复制链接），海报/二维码类提示开发中 */
+const share = async (option: { name: string }) => {
+  ShareShow.value = false
+  const shareData = {
+    title: product.value.name || '商品详情',
+    text: product.value.name || '精品好物推荐',
+    url: window.location.href
+  }
 
-/** 加入购物车 */
-const AddCart = async () => {
-  showConfirmDialog({
-    title: '购物车提醒',
-    message: '是否将该宝贝加入到购物车',
-    confirmButtonColor: '#FF464E'
-  }).then(async () => {
-    if (!businessId) { showFailToast('请先登录'); return false }
+  if (option.name === '复制链接') {
+    await copyText(shareData.url)
+    return
+  }
 
-    const data = { busid: businessId, proid: productId }
+  if (['分享海报', '二维码', '小程序码'].includes(option.name)) {
+    showToast('该功能开发中')
+    return
+  }
+
+  // 微信/朋友圈/微博/QQ：优先调用系统级分享面板
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData)
+    } catch (error) {
+      // 用户取消分享，无需处理
+    }
+  } else {
+    await copyText(shareData.url, { emptyMessage: '分享链接生成失败' })
+    showToast('链接已复制，去粘贴给好友吧')
+  }
+}
+
+/** 加入购物车 - 打开 SKU 选择面板 */
+const AddCart = () => {
+  if (!businessId) {
+    showFailToast('请先登录')
+    return false
+  }
+  skuAction.value = 'cart'
+  skuVisible.value = true
+}
+
+/** 立即购买 - 打开 SKU 选择面板 */
+const Buy = () => {
+  if (!businessId) {
+    showFailToast('请先登录')
+    return false
+  }
+  skuAction.value = 'buy'
+  skuVisible.value = true
+}
+
+/** SKU 选择确认后，根据动作执行加购或购买 */
+const onSkuConfirm = async ({ quantity }: { quantity: number }) => {
+  if (skuAction.value === 'cart') await doAddCart(quantity)
+  else await doBuy(quantity)
+}
+
+/** 执行加入购物车 */
+const doAddCart = async (nums: number) => {
+  try {
+    const data = { busid: businessId, proid: productId, nums }
     const result = await POST({ url: '/cart/add', params: data })
 
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
+    if (isBizFail(result)) {
+      showFailToast(result.msg || '加入购物车失败')
+      return false
+    }
 
     showDialog({
       title: '操作成功',
@@ -196,34 +276,38 @@ const AddCart = async () => {
       confirmButtonText: '去购物车',
       showCancelButton: true,
       cancelButtonText: '再看看'
-    }).then((action) => {
+    }).then(action => {
       if (action === 'confirm') router.push('/cart/index')
     })
 
-    cartStore.updateCount(businessId)
-  }).catch(() => {})
+    await cartStore.updateCount(businessId)
+  } catch (error) {
+    showFailToast('加入购物车失败，请稍后重试')
+  }
 }
 
-/** 立即购买（创建临时购物车记录并跳转结算） */
-const Buy = () => {
-  showConfirmDialog({
-    title: '购买提醒',
-    message: '是否立即购买该宝贝',
-    confirmButtonColor: '#FF464E'
-  }).then(async () => {
-    if (!businessId) { showFailToast('请先登录'); return false }
-
+/** 执行立即购买（创建临时购物车记录并跳转结算） */
+const doBuy = async (nums: number) => {
+  try {
     const result = await POST({
       url: '/cart/buy',
-      params: { busid: businessId, proid: productId }
+      params: { busid: businessId, proid: productId, nums }
     })
 
     if (isBizFail(result)) {
-      showFailToast({ message: result.msg, onClose: () => { router.go(-1) } })
+      showFailToast({
+        message: result.msg,
+        onClose: () => {
+          router.go(-1)
+        }
+      })
       return false
     }
 
-    if (!result.data) { showFailToast('购买信息异常，请稍后重试'); return false }
+    if (!result.data) {
+      showFailToast('购买信息异常，请稍后重试')
+      return false
+    }
 
     cartId.value = result.data
 
@@ -231,7 +315,9 @@ const Buy = () => {
       path: '/cart/confirm',
       query: { cartids: normalizeIdList(cartId.value), action: 'buy' }
     })
-  }).catch(() => {})
+  } catch (error) {
+    showFailToast('购买失败，请稍后重试')
+  }
 }
 </script>
 
@@ -239,7 +325,8 @@ const Buy = () => {
 .product-info-page {
   background: var(--bg-color);
   min-height: 100vh;
-  padding-bottom: 60px;
+  /* 60px 为 action-bar 高度，加 safe-area 补偿底部安全区 */
+  padding-bottom: calc(60px + env(safe-area-inset-bottom));
 }
 
 :deep(.van-nav-bar) {
@@ -270,7 +357,6 @@ const Buy = () => {
 }
 
 /* ========== 商品信息卡片 ========== */
-/* 关键修复：去掉 margin-top: -20px，彻底解决遮挡问题 */
 .info-card {
   background: var(--card-bg);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -404,7 +490,7 @@ const Buy = () => {
 }
 
 .btn-left {
-  background: linear-gradient(135deg, #FFBE00 0%, #FF9500 100%) !important;
+  background: linear-gradient(135deg, #ffbe00 0%, #ff9500 100%) !important;
   border: none !important;
 }
 
@@ -413,7 +499,6 @@ const Buy = () => {
   border: none !important;
 }
 
-/* 加入购物车成功弹框按钮：改为主题文字风格 */
 :deep(.cart-success-dialog .van-dialog__footer .van-button) {
   background: transparent !important;
   border: none !important;
@@ -427,5 +512,49 @@ const Buy = () => {
 :deep(.cart-success-dialog .van-dialog__confirm) {
   color: var(--primary-color) !important;
   font-weight: 600;
+}
+
+/* ========== 首屏骨架屏 ========== */
+.info-skeleton {
+  background: var(--bg-color);
+}
+
+.info-skeleton .sk-banner {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+}
+
+.info-skeleton .sk-banner :deep(.van-skeleton-image) {
+  width: 100%;
+  height: 100%;
+}
+
+.sk-info-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 20px var(--spacing-md) 24px;
+  margin-top: -16px;
+  position: relative;
+  z-index: 1;
+}
+
+.sk-price {
+  margin-bottom: 16px;
+}
+
+.sk-tags {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sk-detail {
+  background: var(--card-bg);
+  margin-top: 12px;
+  padding: 20px var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

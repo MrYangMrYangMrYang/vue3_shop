@@ -7,16 +7,19 @@
   @requires stores/user
 -->
 <template>
-  <van-tabbar 
-    route 
-    active-color="var(--primary-color)" 
-    inactive-color="#969799" 
-    placeholder 
+  <van-tabbar
+    route
+    active-color="var(--primary-color)"
+    inactive-color="#969799"
+    placeholder
     border
+    safe-area-inset-bottom
     class="custom-tabbar"
   >
     <van-tabbar-item to="/" icon="wap-home-o">首页</van-tabbar-item>
-    <van-tabbar-item to="/cart/index" icon="cart-o" :badge="cartStore.count > 0 ? cartStore.count : null">购物车</van-tabbar-item>
+    <van-tabbar-item to="/cart/index" icon="cart-o" :badge="cartStore.count > 0 ? cartStore.count : null">
+      购物车
+    </van-tabbar-item>
     <van-tabbar-item to="/business/index" icon="manager-o">我的</van-tabbar-item>
   </van-tabbar>
 </template>

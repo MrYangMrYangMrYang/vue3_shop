@@ -11,7 +11,6 @@
 -->
 <template>
   <div class="profile-page">
-    <!-- 用户信息头部 -->
     <div class="user-header">
       <div class="user-info-card">
         <router-link to="/business/profile" class="user-link">
@@ -27,7 +26,6 @@
       </div>
     </div>
 
-    <!-- 功能列表 -->
     <div class="function-list">
       <van-cell-group inset>
         <van-cell title="我的订单" is-link to="/order/index" icon="orders-o" />
@@ -35,10 +33,61 @@
         <van-cell v-if="userInfo.auth == '0'" title="邮箱认证" is-link to="/business/email" icon="envelop-o" />
       </van-cell-group>
     </div>
-    
+
     <Menu />
   </div>
 </template>
+
+<script setup>
+defineOptions({ name: 'Business' })
+
+import Menu from '@/components/common/Menu.vue'
+import { useUserStore } from '@/stores/user'
+import { computed } from 'vue'
+
+const userStore = useUserStore()
+
+const defaultAvatar = '/images/tx.png'
+
+/** 用户信息（直接引用 store，保证登出/改资料后视图同步） */
+const userInfo = computed(() => userStore.userInfo || {})
+
+/** 是否已登录（派生自 store） */
+const isLoggedIn = computed(() => userStore.isLoggedIn)
+const maskedMobile = computed(() => maskMobile(userInfo.value.mobile))
+
+/** 后端默认头像URL特征 */
+const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
+
+/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
+const displayAvatar = computed(() => {
+  const avatar = userInfo.value.avatar_text
+  if (!avatar) return defaultAvatar
+  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
+  return avatar
+})
+
+/** 智能显示昵称（手机号自动脱敏） */
+const displayNickname = computed(() => {
+  const nick = userInfo.value.nickname
+  if (!nick) return isLoggedIn.value ? '未设置昵称' : '点击登录'
+  if (/^1\d{10}$/.test(nick)) return `${nick.slice(0, 3)}****${nick.slice(7)}`
+  return nick
+})
+
+/** 手机号脱敏 */
+const maskMobile = mobile => {
+  if (!mobile) return ''
+  const mobileStr = String(mobile).trim()
+  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
+  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
+}
+
+/** 头像加载失败处理 */
+const handleAvatarError = e => {
+  e.target.src = defaultAvatar
+}
+</script>
 
 <style scoped>
 .profile-page {
@@ -121,52 +170,3 @@
   margin-right: 12px;
 }
 </style>
-
-<script setup>
-defineOptions({ name: 'business' })
-
-import Menu from '@/components/common/Menu.vue'
-import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
-import { reactive, computed } from 'vue'
-
-const userStore = useUserStore()
-const router = useRouter()
-
-const defaultAvatar = '/images/tx.png'
-const userInfo = reactive(userStore.userInfo || {})
-
-/** 是否已登录 */
-const isLoggedIn = computed(() => userInfo.id && userInfo.id > 0)
-const maskedMobile = computed(() => maskMobile(userInfo.mobile))
-
-/** 后端默认头像URL特征 */
-const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
-
-/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
-const displayAvatar = computed(() => {
-  const avatar = userInfo.avatar_text
-  if (!avatar) return defaultAvatar
-  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
-  return avatar
-})
-
-/** 智能显示昵称（手机号自动脱敏） */
-const displayNickname = computed(() => {
-  const nick = userInfo.nickname
-  if (!nick) return isLoggedIn.value ? '未设置昵称' : '点击登录'
-  if (/^1\d{10}$/.test(nick)) return `${nick.slice(0, 3)}****${nick.slice(7)}`
-  return nick
-})
-
-/** 手机号脱敏 */
-const maskMobile = (mobile) => {
-  if (!mobile) return ''
-  const mobileStr = String(mobile).trim()
-  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
-  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
-}
-
-/** 头像加载失败处理 */
-const handleAvatarError = (e) => { e.target.src = defaultAvatar }
-</script>

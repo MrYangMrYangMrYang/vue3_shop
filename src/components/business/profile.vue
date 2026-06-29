@@ -11,21 +11,15 @@
 -->
 <template>
   <div class="profile-page">
-    <van-nav-bar
-      title="个人信息"
-      left-arrow
-      @click-left="back"
-      class="custom-nav"
-    />
+    <van-nav-bar title="个人信息" left-arrow @click-left="back" class="custom-nav" />
 
     <div class="profile-container">
       <van-form @submit="profile">
-        <!-- 头像区域 - 横向布局 -->
         <div class="avatar-section card-item">
           <div class="section-title">我的头像</div>
           <div class="uploader-wrapper">
-            <van-uploader 
-              v-model="AvatarPreview" 
+            <van-uploader
+              v-model="AvatarPreview"
               :max-count="1"
               reupload
               :deletable="false"
@@ -42,7 +36,6 @@
           </div>
         </div>
 
-        <!-- 基本信息 -->
         <div class="info-section card-item">
           <div class="section-title">基本信息</div>
           <van-cell-group inset :border="false">
@@ -74,7 +67,6 @@
           </van-cell-group>
         </div>
 
-        <!-- 账户与安全 -->
         <div class="account-section card-item">
           <div class="section-title">账户与安全</div>
           <van-cell-group inset :border="false">
@@ -103,41 +95,165 @@
           </van-cell-group>
         </div>
 
-        <!-- 保存按钮 -->
         <div class="action-btn">
           <van-button round block type="primary" native-type="submit" :loading="submitting" :disabled="submitting">
             保存修改
           </van-button>
         </div>
 
-        <!-- 退出登录 -->
         <div class="logout-btn-wrapper">
-          <van-button round block plain type="danger" @click="logout">
-            退出登录
-          </van-button>
+          <van-button round block plain type="danger" @click="logout">退出登录</van-button>
         </div>
       </van-form>
     </div>
 
-    <!-- 性别选择弹窗 -->
     <van-popup v-model:show="GenderShow" position="bottom" round>
-      <van-picker
-        :columns="GenderList"
-        @confirm="GenderConfirm"
-        @cancel="GenderShow = false"
-      />
+      <van-picker :columns="GenderList" @confirm="GenderConfirm" @cancel="GenderShow = false" />
     </van-popup>
 
-    <!-- 地区选择弹窗 -->
     <van-popup v-model:show="RegionShow" position="bottom" round>
-      <van-area
-        :area-list="areaList"
-        @confirm="RegionConfirm"
-        @cancel="RegionShow = false"
-      />
+      <van-area :area-list="areaList" @confirm="RegionConfirm" @cancel="RegionShow = false" />
     </van-popup>
   </div>
 </template>
+
+<script setup>
+import { useUserStore } from '@/stores/user'
+import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { useRouter } from 'vue-router'
+import { reactive, ref } from 'vue'
+import { areaList } from '@vant/area-data'
+import { UPLOAD } from '@/services/request'
+import { isBizFail } from '@/utils/result'
+import { useBack } from '@/hooks'
+import { EMAIL_PATTERN } from '@/utils/validate'
+
+const userStore = useUserStore()
+const router = useRouter()
+const submitting = ref(false)
+
+const login = userStore.userInfo || {}
+const business = reactive(login)
+
+/** 退出登录 */
+const logout = () => {
+  showConfirmDialog({
+    title: '退出提醒',
+    message: '确定要退出当前账号吗？',
+    confirmButtonColor: '#FF464E'
+  })
+    .then(() => {
+      userStore.clearUserInfo()
+      showSuccessToast('已安全退出')
+      router.push('/login')
+    })
+    .catch(() => {})
+}
+
+/** 手机号脱敏 */
+const maskMobile = mobile => {
+  if (!mobile) return ''
+  const mobileStr = String(mobile).trim()
+  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
+  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
+}
+const maskedMobile = maskMobile(business.mobile)
+
+const back = useBack()
+
+/** 表单验证规则 */
+const rules = reactive({
+  nickname: [{ required: true, message: '请输入昵称' }],
+  email: [
+    { required: true, message: '请输入邮箱' },
+    { pattern: EMAIL_PATTERN, message: '邮箱格式有误' }
+  ]
+})
+
+/** 性别选择 */
+const GenderShow = ref(false)
+const GenderList = ref([
+  { text: '保密', value: '0' },
+  { text: '男', value: '1' },
+  { text: '女', value: '2' }
+])
+
+/** 性别确认选择 */
+const GenderConfirm = ({ selectedOptions }) => {
+  GenderShow.value = false
+  business.gender = selectedOptions[0].value
+  business.sex_text = selectedOptions[0].text
+}
+
+/** 地区选择 */
+const RegionShow = ref(false)
+
+/** 地区确认选择 */
+const RegionConfirm = ({ selectedOptions }) => {
+  RegionShow.value = false
+  const [province, city, district] = selectedOptions
+  business.region_code = district.value
+  let region_text = ''
+  if (province.text) region_text += province.text
+  if (city.text) region_text += `/${city.text}`
+  if (district.text) region_text += `/${district.text}`
+  business.region_text = region_text
+}
+
+/** 头像预览（用户自定义优先，后端默认→替换为前端默认） */
+const defaultAvatar = '/images/tx.png'
+const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
+
+/** 获取展示头像（自定义优先，后端默认替换为前端默认） */
+const getDisplayAvatar = url => {
+  if (!url) return defaultAvatar
+  if (url.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
+  return url
+}
+
+/** 头像预览列表 */
+const AvatarPreview = ref([{ url: getDisplayAvatar(business.avatar_text) }])
+
+/** 提交保存 */
+const profile = async values => {
+  if (submitting.value) return false
+
+  const data = {
+    id: business.id,
+    mobile: business.mobile,
+    nickname: values.nickname,
+    email: values.email,
+    gender: business.gender,
+    region: business.region_code
+  }
+
+  if (values.password) data.password = values.password
+
+  const avatar = values.avatar && values.avatar[0] ? values.avatar[0].file : null
+  if (avatar) data.avatar = avatar
+
+  submitting.value = true
+  try {
+    const result = await UPLOAD({ url: '/business/profile', params: data })
+    if (isBizFail(result)) {
+      showFailToast(result.msg)
+      return false
+    }
+
+    showSuccessToast({
+      message: result.msg,
+      onClose: () => {
+        userStore.setUserInfo(result.data)
+        router.go(-1)
+      }
+    })
+  } catch (error) {
+    showFailToast('保存失败，请稍后重试')
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
 
 <style scoped>
 .profile-page {
@@ -281,138 +397,3 @@
   box-shadow: var(--shadow-sm);
 }
 </style>
-
-<script setup>
-import { useUserStore } from '@/stores/user'
-import { useCartStore } from '@/stores/cart'
-import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
-import { useRouter } from 'vue-router'
-import { reactive, ref } from 'vue'
-import { areaList } from '@vant/area-data'
-import { POST, UPLOAD } from '@/services/request'
-import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
-
-const userStore = useUserStore()
-const cartStore = useCartStore()
-const router = useRouter()
-const submitting = ref(false)
-
-var login = userStore.userInfo || {}
-const business = reactive(login)
-
-/** 退出登录 */
-const logout = () => {
-  showConfirmDialog({
-    title: '退出提醒',
-    message: '确定要退出当前账号吗？',
-    confirmButtonColor: '#FF464E'
-  }).then(() => {
-    userStore.clearUserInfo()
-    cartStore.setCount(0)
-    showSuccessToast('已安全退出')
-    router.push('/login')
-  }).catch(() => {})
-}
-
-/** 手机号脱敏 */
-const maskMobile = (mobile) => {
-  if (!mobile) return ''
-  const mobileStr = String(mobile).trim()
-  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
-  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
-}
-const maskedMobile = maskMobile(business.mobile)
-
-const back = useBack()
-
-/** 表单验证规则 */
-let rules = reactive({
-  nickname: [{ required: true, message: '请输入昵称' }],
-  email: [
-    { required: true, message: '请输入邮箱' },
-    { pattern: /^([A-Za-z0-9_\-\.\u4e00-\u9fa5])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,8})$/, message: '邮箱格式有误' }
-  ],
-})
-
-/** 性别选择 */
-const GenderShow = ref(false)
-const GenderList = ref([
-  { text: '保密', value: '0' },
-  { text: '男', value: '1' },
-  { text: '女', value: '2' },
-])
-
-/** 性别确认选择 */
-const GenderConfirm = ({ selectedOptions }) => {
-  GenderShow.value = false
-  business.gender = selectedOptions[0].value
-  business.sex_text = selectedOptions[0].text
-}
-
-/** 地区选择 */
-const RegionShow = ref(false)
-
-/** 地区确认选择 */
-const RegionConfirm = ({ selectedOptions }) => {
-  RegionShow.value = false
-  const [province, city, district] = selectedOptions
-  business.region_code = district.value
-  let region_text = ''
-  if (province.text) region_text += province.text
-  if (city.text) region_text += `/${city.text}`
-  if (district.text) region_text += `/${district.text}`
-  business.region_text = region_text
-}
-
-/** 头像预览（用户自定义优先，后端默认→替换为前端默认） */
-const defaultAvatar = '/images/tx.png'
-const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
-
-/** 获取展示头像（自定义优先，后端默认替换为前端默认） */
-const getDisplayAvatar = (url) => {
-  if (!url) return defaultAvatar
-  if (url.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
-  return url
-}
-
-/** 头像预览列表 */
-const AvatarPreview = ref([{ url: getDisplayAvatar(business.avatar_text) }])
-
-/** 提交保存 */
-const profile = async (values) => {
-  if (submitting.value) return false
-
-  var data = {
-    id: business.id,
-    mobile: business.mobile,
-    nickname: values.nickname,
-    email: values.email,
-    gender: business.gender,
-    region: business.region_code,
-  }
-
-  if (values.password) data.password = values.password
-
-  var avatar = values.avatar && values.avatar[0] ? values.avatar[0].file : null
-  if (avatar) data.avatar = avatar
-
-  submitting.value = true
-  try {
-    var result = await UPLOAD({ url: '/business/profile', params: data })
-    if (isBizFail(result)) { showFailToast(result.msg); return false }
-
-    showSuccessToast({
-      message: result.msg,
-      onClose: () => {
-        userStore.setUserInfo(result.data)
-        router.go(-1)
-      }
-    })
-  } catch (error) {
-    showFailToast('保存失败，请稍后重试')
-  } finally {
-    submitting.value = false
-  }
-}
-</script>
