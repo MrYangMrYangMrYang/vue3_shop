@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { usePendingPaymentStore, type PendingOrder } from '../pendingPayment'
+import { useUserStore } from '@/stores/user'
+import { POST } from '@/services/request'
+import type { ApiResult } from '@/services/request'
+
+vi.mock('@/services/request')
 
 const STORAGE_KEY = 'pending_payment_orders'
 
@@ -10,6 +15,12 @@ const makeOrder = (overrides: Partial<PendingOrder> & { id?: string | number } =
   name_text: '商品A',
   thumbs_text: 'http://img/a.png',
   amount: 99.5,
+  code: 'LOCALTEST',
+  cartids: '1,2',
+  addrid: 10,
+  remark: '',
+  action: '',
+  item_count: 2,
   ...overrides
 })
 
@@ -194,6 +205,20 @@ describe('pendingPayment store', () => {
       expect(store.clearIncompleteOrders()).toBe(0)
       expect(store.orders).toHaveLength(1)
     })
+
+    it('缺少 cartids 的订单被清除', () => {
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 1, cartids: undefined }))
+      expect(store.clearIncompleteOrders()).toBe(1)
+      expect(store.orders).toHaveLength(0)
+    })
+
+    it('缺少 addrid 的订单被清除', () => {
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 1, addrid: undefined }))
+      expect(store.clearIncompleteOrders()).toBe(1)
+      expect(store.orders).toHaveLength(0)
+    })
   })
 
   describe('持久化', () => {
@@ -237,6 +262,80 @@ describe('pendingPayment store', () => {
       store.addPendingOrder(makeOrder({ id: 1 }))
       store.clearAll()
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+    })
+  })
+
+  describe('placeOrder', () => {
+    beforeEach(() => {
+      vi.mocked(POST).mockReset()
+    })
+
+    it('支付成功后移除待付款订单', async () => {
+      vi.mocked(POST).mockResolvedValue({ code: 1, msg: '下单成功', data: '', url: '/order/index' })
+      const userStore = useUserStore()
+      userStore.setUserInfo({ id: 10 })
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 'LOCAL_OK', createtime: Date.now() }))
+      const r = await store.placeOrder('LOCAL_OK')
+      expect(r.success).toBe(true)
+      expect(r.url).toBe('/order/index')
+      expect(store.getPendingOrder('LOCAL_OK')).toBeUndefined()
+    })
+
+    it('业务失败时保留订单以便重试', async () => {
+      vi.mocked(POST).mockResolvedValue({ code: 0, msg: '库存不足', data: null })
+      const userStore = useUserStore()
+      userStore.setUserInfo({ id: 10 })
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 'LOCAL_FAIL', createtime: Date.now() }))
+      const r = await store.placeOrder('LOCAL_FAIL')
+      expect(r.success).toBe(false)
+      expect(r.msg).toBe('库存不足')
+      expect(store.getPendingOrder('LOCAL_FAIL')).toBeDefined()
+    })
+
+    it('订单不存在返回失败', async () => {
+      const userStore = useUserStore()
+      userStore.setUserInfo({ id: 10 })
+      const store = usePendingPaymentStore()
+      const r = await store.placeOrder('LOCAL_NOPE')
+      expect(r.success).toBe(false)
+      expect(r.msg).toBe('订单不存在或已支付')
+    })
+
+    it('未登录返回失败', async () => {
+      const userStore = useUserStore()
+      userStore.setUserInfo(null)
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 'LOCAL_NOLOGIN', createtime: Date.now() }))
+      const r = await store.placeOrder('LOCAL_NOLOGIN')
+      expect(r.success).toBe(false)
+      expect(r.msg).toBe('登录状态异常')
+    })
+
+    it('超时订单被移除并返回失败', async () => {
+      vi.setSystemTime(new Date('2026-01-01T01:00:00Z'))
+      const userStore = useUserStore()
+      userStore.setUserInfo({ id: 10 })
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 'LOCAL_EXPIRED', createtime: new Date('2026-01-01T00:29:00Z').getTime() }))
+      const r = await store.placeOrder('LOCAL_EXPIRED')
+      expect(r.success).toBe(false)
+      expect(r.msg).toBe('支付已超时，请重新下单')
+      expect(store.getPendingOrder('LOCAL_EXPIRED')).toBeUndefined()
+    })
+
+    it('并发调用同一订单返回处理中', async () => {
+      vi.mocked(POST).mockImplementation(
+        () => new Promise<ApiResult>(resolve => setTimeout(() => resolve({ code: 1, msg: 'ok', data: '' }), 100))
+      )
+      const userStore = useUserStore()
+      userStore.setUserInfo({ id: 10 })
+      const store = usePendingPaymentStore()
+      store.addPendingOrder(makeOrder({ id: 'LOCAL_CONCURRENT', createtime: Date.now() }))
+      const [r1, r2] = await Promise.all([store.placeOrder('LOCAL_CONCURRENT'), store.placeOrder('LOCAL_CONCURRENT')])
+      const msgs = [r1.msg, r2.msg]
+      expect(msgs).toContain('支付处理中，请勿重复提交')
     })
   })
 })

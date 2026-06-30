@@ -3,7 +3,6 @@
   @module components/product/info
   @description 负责展示商品完整信息：包括多图轮播、价格、库存、商品详情介绍（富文本），
                并提供加入购物车与立即购买功能，支持图片预览、分享面板、客服联系
-  @requires stores/user
   @requires stores/cart
   @requires services/request
   @example
@@ -29,14 +28,15 @@
         <div class="sk-price">
           <van-skeleton-title title-width="40%" />
         </div>
-        <van-skeleton-paragraph :row-width="['100%', '80%', '60%'] as any" />
+        <!-- Vant 4 row-width 文档支持数组但 prop 类型仅限 string|number（已知 bug：vant-ui/vant#12041），用类型断言桥接；运行时警告由 main.ts warnHandler 过滤 -->
+        <van-skeleton-paragraph :row-width="['100%', '80%', '60%'] as unknown as string" />
         <div class="sk-tags">
           <van-skeleton-title v-for="i in 3" :key="i" title-width="60px" />
         </div>
       </div>
       <div class="sk-detail">
         <van-skeleton-title title-width="30%" />
-        <van-skeleton-paragraph :row-width="['100%', '100%', '90%', '70%'] as any" />
+        <van-skeleton-paragraph :row-width="['100%', '100%', '90%', '70%'] as unknown as string" />
       </div>
     </div>
 
@@ -45,7 +45,7 @@
 
     <template v-else>
       <div class="banner" @click="previewImage">
-        <img v-lazy="product.thumbs_text" class="banner-img" />
+        <img v-lazy="product.thumbs_text" class="banner-img" :alt="product.name || '商品图片'" />
       </div>
 
       <div class="info-card">
@@ -93,11 +93,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, onBeforeMount, computed } from 'vue'
 import { POST } from '@/services/request'
 import { showFailToast, showConfirmDialog, showImagePreview, showDialog, showToast } from 'vant'
-import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
+import { useBack, useCartBadge, useBusid } from '@/hooks'
 import DOMPurify from 'dompurify'
 import NetworkError from '@/components/common/NetworkError.vue'
 import SkuPanel from '@/components/product/SkuPanel.vue'
@@ -105,17 +104,29 @@ import { copyText } from '@/utils/clipboard'
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 const cartStore = useCartStore()
 
-const login = userStore.userInfo || {}
-const businessId = Object.hasOwn(login, 'id') ? (login.id ?? 0) : 0
+const businessId = useBusid()
 
 const productId = getRouteQueryValue(route.query, 'proid', 0)
-const product = ref<Record<string, any>>({})
+
+/** 商品详情数据（后端 /index/info 返回的 product 字段） */
+interface ProductDetail {
+  id?: string | number
+  name?: string
+  thumbs_text?: string
+  price?: string | number
+  stock?: number | string
+  unit?: { name?: string }
+  content?: string
+  specs?: { name: string; options: string[] }[]
+  [key: string]: unknown
+}
+
+const product = ref<ProductDetail>({} as ProductDetail)
 const loading = ref(true)
 const hasError = ref(false)
-const count = computed(() => cartStore.count)
+const count = useCartBadge()
 
 /** 商品详情富文本（XSS 净化） */
 const sanitizedContent = computed(() => DOMPurify.sanitize(product.value.content || ''))
@@ -155,7 +166,7 @@ const ProductInfo = async () => {
       params: { proid: productId, busid: businessId }
     })
 
-    if (isBizFail(result) || !result.data || !result.data.product) {
+    if (isBizFail(result) || !result.data || !(result.data as Record<string, unknown>).product) {
       showFailToast({
         message: result.msg || '商品信息加载失败',
         onClose: () => {
@@ -165,9 +176,10 @@ const ProductInfo = async () => {
       return false
     }
 
-    product.value = result.data.product
-    cartStore.setCount(result.data.count || 0)
-    mobile.value = result.data.contact || ''
+    const data = result.data as { product: Record<string, unknown>; count?: number; contact?: string }
+    product.value = data.product as ProductDetail
+    cartStore.setCount(data.count || 0)
+    mobile.value = data.contact || ''
   } catch (error) {
     hasError.value = true
   } finally {
@@ -309,7 +321,7 @@ const doBuy = async (nums: number) => {
       return false
     }
 
-    cartId.value = result.data
+    cartId.value = result.data as string
 
     router.push({
       path: '/cart/confirm',

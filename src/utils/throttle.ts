@@ -4,7 +4,11 @@
  *              与 debounce 的区别：debounce 等空闲，throttle 按固定频率触发
  */
 
-type AnyFn = (...args: any[]) => void
+/**
+ * 泛型函数约束类型：never 是 bottom type，任何函数类型都 extends (...args: never[]) => void
+ * 用作泛型 T 的约束，确保 T 是函数同时保留其原始参数签名供 Parameters<T> 推导
+ */
+type AnyFn = (...args: never[]) => void
 
 /**
  * @param fn 目标函数

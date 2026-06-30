@@ -24,7 +24,7 @@
 
     <div class="order-content" @click="emit('detail', order.id)">
       <div class="product-img">
-        <img v-lazy="order.thumbs_text" alt="" />
+        <img v-lazy="order.thumbs_text" :alt="order.name_text || '商品图片'" />
       </div>
       <div class="product-info">
         <div class="product-name">{{ order.name_text }}</div>
@@ -135,7 +135,7 @@
 
 <script setup lang="ts">
 import { ORDER_STATUS, isPendingPayment, isCancelled } from '@/constants/order'
-import { formatCurrency } from '@/utils/currency'
+import { formatAmount } from '@/utils/currency'
 import { isPaymentExpired } from '@/utils/countdown'
 
 /** 订单数据结构（后端返回字段，模板渲染所需的子集） */
@@ -170,9 +170,6 @@ const emit = defineEmits<{
   (e: 'evaluate', id: OrderItem['id']): void
   (e: 'afterSale', id: OrderItem['id']): void
 }>()
-
-/** 格式化金额显示 */
-const formatAmount = (amount: number | undefined) => formatCurrency(amount ?? 0)
 </script>
 
 <style scoped>

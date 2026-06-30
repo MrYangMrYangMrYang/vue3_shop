@@ -11,7 +11,7 @@
   <router-link to="/">首页</router-link>
 -->
 <template>
-  <div class="home-page" ref="homeContainer">
+  <div class="home-page">
     <div class="topBox">
       <div class="logo">{{ site }}</div>
       <div class="search-wrapper">
@@ -46,7 +46,7 @@
         <div class="sk-grid">
           <div v-for="i in 4" :key="i" class="sk-card">
             <van-skeleton-image image-size="100%" class="sk-card-img" />
-            <van-skeleton-paragraph :row-width="['100%', '60%']" />
+            <van-skeleton-paragraph :row-width="['100%', '60%'] as unknown as string" />
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@
               class="category-item"
             >
               <div class="category-icon">
-                <img v-lazy="item.thumb_text" />
+                <img v-lazy="item.thumb_text" :alt="item.name" />
               </div>
               <span class="category-name">{{ item.name }}</span>
             </router-link>
@@ -84,7 +84,7 @@
           <van-swipe class="aui-m-slider" :autoplay="3000" indicator-color="white">
             <van-swipe-item v-for="item in hots" :key="item.id">
               <router-link :to="{ path: '/product/info', query: { proid: item.id } }" class="slider-link">
-                <img v-lazy="item.thumbs_text" class="slider-img" />
+                <img v-lazy="item.thumbs_text" class="slider-img" alt="热门商品" />
               </router-link>
             </van-swipe-item>
           </van-swipe>
@@ -95,11 +95,11 @@
             <span class="section-title">好物推荐</span>
             <router-link to="/product/list" class="more-link">查看更多 ›</router-link>
           </div>
-          <ul class="product-grid" ref="productGrid">
+          <ul class="product-grid">
             <li v-for="item in recommend" :key="item.id">
               <router-link :to="{ path: '/product/info', query: { proid: item.id } }" class="product-card">
                 <div class="img-wrapper">
-                  <img v-lazy="item.thumbs_text" />
+                  <img v-lazy="item.thumbs_text" :alt="item.name" />
                 </div>
                 <div class="product-info">
                   <p class="title text-ellipsis-2">{{ item.name }}</p>
@@ -125,7 +125,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineOptions({ name: 'Home' })
 
 import { POST } from '@/services/request'
@@ -137,9 +137,38 @@ import NetworkError from '@/components/common/NetworkError.vue'
 import { getCache, setCache } from '@/utils/cache'
 import { debounce } from '@/utils/debounce'
 
-const typelist = ref([])
-const recommend = ref([])
-const hots = ref([])
+/** 首页商品分类项 */
+interface TypeListItem {
+  id: string | number
+  thumb_text: string
+  name: string
+}
+
+/** 好物推荐商品项 */
+interface RecommendItem {
+  id: string | number
+  thumbs_text: string
+  name: string
+  price: string | number
+}
+
+/** 热门商品项 */
+interface HotItem {
+  id: string | number
+  thumbs_text: string
+}
+
+/** 首页聚合数据（后端 /index/index 返回） */
+interface HomeData {
+  typelist?: TypeListItem[]
+  recommend?: RecommendItem[]
+  hots?: HotItem[]
+  search?: { id: string | number }
+}
+
+const typelist = ref<TypeListItem[]>([])
+const recommend = ref<RecommendItem[]>([])
+const hots = ref<HotItem[]>([])
 const site = ref('精品家居')
 const keywords = ref('')
 const loading = ref(true)
@@ -151,7 +180,7 @@ const HOME_CACHE_TTL = 5 * 60 * 1000
 const router = useRouter()
 
 /** 应用首页数据 */
-const applyHomeData = data => {
+const applyHomeData = (data: HomeData) => {
   typelist.value = data?.typelist || []
   recommend.value = data?.recommend || []
   hots.value = data?.hots || []
@@ -162,7 +191,7 @@ const fetchHomeData = async () => {
   hasError.value = false
   try {
     const result = await POST({ url: '/index/index' })
-    const data = result.data || {}
+    const data = (result.data || {}) as HomeData
     applyHomeData(data)
     setCache(HOME_CACHE_KEY, data, HOME_CACHE_TTL)
   } catch (error) {
@@ -179,7 +208,7 @@ const retryHome = () => {
 }
 
 onBeforeMount(async () => {
-  const cachedData = getCache(HOME_CACHE_KEY)
+  const cachedData = getCache<HomeData>(HOME_CACHE_KEY)
   if (cachedData) {
     applyHomeData(cachedData)
     loading.value = false
@@ -192,7 +221,7 @@ onBeforeMount(async () => {
 const onRefresh = async () => {
   try {
     const result = await POST({ url: '/index/index' })
-    const data = result.data || {}
+    const data = (result.data || {}) as HomeData
     applyHomeData(data)
     setCache(HOME_CACHE_KEY, data, HOME_CACHE_TTL)
   } catch (error) {
@@ -203,7 +232,7 @@ const onRefresh = async () => {
 }
 
 /** 搜索跳转（防抖） */
-const search = debounce(async value => {
+const search = debounce(async (value: string) => {
   if (!value || !value.trim()) return
   keywords.value = value
   try {
@@ -213,7 +242,7 @@ const search = debounce(async value => {
         keywords: keywords.value
       }
     })
-    const searchTypeId = result.data?.search?.id
+    const searchTypeId = (result.data as HomeData)?.search?.id
     router.push({
       path: '/product/list',
       query: searchTypeId ? { typeid: searchTypeId } : { keywords: keywords.value }

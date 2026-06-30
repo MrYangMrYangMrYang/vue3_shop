@@ -117,7 +117,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useUserStore } from '@/stores/user'
 import { showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import { useRouter } from 'vue-router'
@@ -126,14 +126,52 @@ import { areaList } from '@vant/area-data'
 import { UPLOAD } from '@/services/request'
 import { isBizFail } from '@/utils/result'
 import { useBack } from '@/hooks'
+import { maskMobile } from '@/utils/mask'
+import { getDisplayAvatarUrl } from '@/hooks/useAvatar'
 import { EMAIL_PATTERN } from '@/utils/validate'
+
+/** 个人资料表单数据（扩展 BusinessUserInfo 的表单编辑字段） */
+interface ProfileForm {
+  id?: number
+  mobile?: string
+  nickname?: string
+  avatar?: string
+  email?: string
+  region_code?: string
+  avatar_text?: string
+  token?: string
+  auth?: string
+  gender?: string
+  sex_text?: string
+  region_text?: string
+  password?: string
+}
+
+/** 下拉选项 */
+interface PickerOption {
+  text: string
+  value: string
+}
+
+/** Picker/Area 确认事件参数 */
+interface PickerConfirmParam {
+  selectedOptions: PickerOption[]
+}
+
+/** 表单提交值 */
+interface ProfileSubmitValues {
+  nickname?: string
+  email?: string
+  password?: string
+  avatar?: { file?: File }[]
+}
 
 const userStore = useUserStore()
 const router = useRouter()
 const submitting = ref(false)
 
 const login = userStore.userInfo || {}
-const business = reactive(login)
+const business = reactive<ProfileForm>(login)
 
 /** 退出登录 */
 const logout = () => {
@@ -150,13 +188,6 @@ const logout = () => {
     .catch(() => {})
 }
 
-/** 手机号脱敏 */
-const maskMobile = mobile => {
-  if (!mobile) return ''
-  const mobileStr = String(mobile).trim()
-  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
-  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
-}
 const maskedMobile = maskMobile(business.mobile)
 
 const back = useBack()
@@ -172,14 +203,14 @@ const rules = reactive({
 
 /** 性别选择 */
 const GenderShow = ref(false)
-const GenderList = ref([
+const GenderList = ref<PickerOption[]>([
   { text: '保密', value: '0' },
   { text: '男', value: '1' },
   { text: '女', value: '2' }
 ])
 
 /** 性别确认选择 */
-const GenderConfirm = ({ selectedOptions }) => {
+const GenderConfirm = ({ selectedOptions }: PickerConfirmParam) => {
   GenderShow.value = false
   business.gender = selectedOptions[0].value
   business.sex_text = selectedOptions[0].text
@@ -189,36 +220,25 @@ const GenderConfirm = ({ selectedOptions }) => {
 const RegionShow = ref(false)
 
 /** 地区确认选择 */
-const RegionConfirm = ({ selectedOptions }) => {
+const RegionConfirm = ({ selectedOptions }: PickerConfirmParam) => {
   RegionShow.value = false
   const [province, city, district] = selectedOptions
-  business.region_code = district.value
+  business.region_code = district?.value ?? ''
   let region_text = ''
-  if (province.text) region_text += province.text
-  if (city.text) region_text += `/${city.text}`
-  if (district.text) region_text += `/${district.text}`
+  if (province?.text) region_text += province.text
+  if (city?.text) region_text += `/${city.text}`
+  if (district?.text) region_text += `/${district.text}`
   business.region_text = region_text
 }
 
-/** 头像预览（用户自定义优先，后端默认→替换为前端默认） */
-const defaultAvatar = '/images/tx.png'
-const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
-
-/** 获取展示头像（自定义优先，后端默认替换为前端默认） */
-const getDisplayAvatar = url => {
-  if (!url) return defaultAvatar
-  if (url.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
-  return url
-}
-
 /** 头像预览列表 */
-const AvatarPreview = ref([{ url: getDisplayAvatar(business.avatar_text) }])
+const AvatarPreview = ref<{ url?: string }[]>([{ url: getDisplayAvatarUrl(business.avatar_text) }])
 
 /** 提交保存 */
-const profile = async values => {
+const profile = async (values: ProfileSubmitValues) => {
   if (submitting.value) return false
 
-  const data = {
+  const data: Record<string, unknown> = {
     id: business.id,
     mobile: business.mobile,
     nickname: values.nickname,
@@ -236,14 +256,14 @@ const profile = async values => {
   try {
     const result = await UPLOAD({ url: '/business/profile', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '保存失败')
       return false
     }
 
     showSuccessToast({
       message: result.msg,
       onClose: () => {
-        userStore.setUserInfo(result.data)
+        userStore.setUserInfo(result.data as ProfileForm)
         router.go(-1)
       }
     })

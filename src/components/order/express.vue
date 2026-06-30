@@ -15,96 +15,121 @@
     </van-sticky>
 
     <div class="express-content">
-      <div class="express-card overview-card">
-        <div class="company-info">
-          <van-icon name="logistics" size="24" class="company-icon" />
-          <div>
-            <div class="company-name">{{ expressInfo.expName || '暂无物流公司信息' }}</div>
-            <div class="tracking-info" v-if="list.exfasscode">
-              <span class="tracking-no">运单号：{{ list.exfasscode }}</span>
-              <van-icon name="copy-o" class="copy-icon" @click="copyTrackingNo" />
-            </div>
-            <div class="tracking-no" v-else>运单号：暂无</div>
-          </div>
-        </div>
-      </div>
+      <van-loading v-if="loading" type="spinner" class="express-loading" />
 
-      <div class="express-card steps-card">
-        <div class="card-title">物流轨迹</div>
-        <div class="steps-timeline" v-if="list.list && list.list.length">
-          <div class="timeline-item" v-for="(item, index) in list.list" :key="index" :class="{ active: index === 0 }">
-            <div class="timeline-dot" :class="{ 'active-dot': index === 0 }">
-              <van-icon v-if="index === 0" name="checked" size="10" />
-            </div>
-            <div class="timeline-line" v-if="index !== list.list.length - 1"></div>
-            <div class="timeline-content">
-              <div class="timeline-status">{{ item.status }}</div>
-              <div class="timeline-time">{{ item.time }}</div>
+      <template v-else>
+        <NetworkError v-if="hasError" :description="errorMsg || '物流信息加载失败，请稍后重试'" @retry="fetchExpress" />
+
+        <template v-else>
+          <div class="express-card overview-card">
+            <div class="company-info">
+              <van-icon name="logistics" size="24" class="company-icon" />
+              <div>
+                <div class="company-name">{{ expressInfo.expName || '暂无物流公司信息' }}</div>
+                <div class="tracking-info" v-if="list.exfasscode">
+                  <span class="tracking-no">运单号：{{ list.exfasscode }}</span>
+                  <van-icon name="copy-o" class="copy-icon" @click="copyTrackingNo" />
+                </div>
+                <div class="tracking-no" v-else>运单号：暂无</div>
+              </div>
             </div>
           </div>
-        </div>
-        <van-empty v-else description="暂无物流轨迹" image="search" />
-      </div>
+
+          <div class="express-card steps-card">
+            <div class="card-title">物流轨迹</div>
+            <div class="steps-timeline" v-if="list.list && list.list.length">
+              <div
+                class="timeline-item"
+                v-for="(item, index) in list.list"
+                :key="item.time || index"
+                :class="{ active: index === 0 }"
+              >
+                <div class="timeline-dot" :class="{ 'active-dot': index === 0 }">
+                  <van-icon v-if="index === 0" name="checked" size="10" />
+                </div>
+                <div class="timeline-line" v-if="index !== list.list.length - 1"></div>
+                <div class="timeline-content">
+                  <div class="timeline-status">{{ item.status }}</div>
+                  <div class="timeline-time">{{ item.time }}</div>
+                </div>
+              </div>
+            </div>
+            <van-empty v-else description="暂无物流轨迹" image="search" />
+          </div>
+        </template>
+      </template>
     </div>
   </div>
 </template>
 
-<script setup>
-import { useRouter, useRoute } from 'vue-router'
+<script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { ref, onBeforeMount } from 'vue'
 import { POST } from '@/services/request'
+import { useBack, useBusid } from '@/hooks'
 import { showFailToast } from 'vant'
-import { useUserStore } from '@/stores/user'
 import { copyText } from '@/utils/clipboard'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
+import NetworkError from '@/components/common/NetworkError.vue'
 
-const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 
-const login = userStore.userInfo || {}
-const busid = login.id || 0
+const busid = useBusid()
 const orderid = getRouteQueryValue(route.query, 'orderid', 0)
 
-const list = ref({ list: [] })
-const expressInfo = ref({})
-
-const back = () => {
-  router.go(-1)
+interface ExpressTimelineItem {
+  status?: string
+  time?: string
 }
+
+interface ExpressData {
+  exfasscode?: string
+  list?: ExpressTimelineItem[]
+  expName?: string
+  [key: string]: unknown
+}
+
+const list = ref<ExpressData>({})
+const expressInfo = ref<ExpressData>({})
+const loading = ref(true)
+const hasError = ref(false)
+const errorMsg = ref('')
+
+const back = useBack()
 
 const copyTrackingNo = () => {
   copyText(list.value.exfasscode || '')
 }
 
-onBeforeMount(async () => {
+const fetchExpress = async () => {
+  loading.value = true
+  hasError.value = false
   try {
     const result = await POST({
       url: '/order/express',
-      params: {
-        busid: busid,
-        orderid: orderid
-      }
+      params: { busid, orderid }
     })
 
     if (isBizFail(result)) {
-      showFailToast({
-        message: result.msg,
-        onClose: () => {
-          router.go(-1)
-        }
-      })
+      errorMsg.value = (result.msg as string) || '物流信息加载失败'
+      showFailToast(errorMsg.value)
+      hasError.value = true
       return
     }
 
-    const data = result.data || { list: [] }
+    const data = (result.data as ExpressData) || { list: [] }
     list.value = data
     expressInfo.value = data
   } catch (error) {
     showFailToast('物流信息加载失败，请稍后重试')
+    hasError.value = true
+  } finally {
+    loading.value = false
   }
-})
+}
+
+onBeforeMount(fetchExpress)
 </script>
 
 <style scoped>
@@ -125,6 +150,12 @@ onBeforeMount(async () => {
 
 .express-content {
   padding: var(--spacing-md);
+}
+
+.express-loading {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
 }
 
 .express-card {

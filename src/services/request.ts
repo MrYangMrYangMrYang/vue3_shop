@@ -18,22 +18,24 @@
  * const result = await GET({ url: '/index/info', params: { proid }, silent: true })
  */
 
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { showFailToast } from 'vant'
 
-/** 后端业务返回值结构（响应拦截器已剥离 AxiosResponse 外壳） */
-interface ApiResult {
+/** 后端业务返回值结构（GET/POST/UPLOAD 自动提取 axios.data，调用方直接拿到 ApiResult） */
+export interface ApiResult {
   code: number
-  data?: any
+  data?: unknown
   msg?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /** GET/POST/UPLOAD 的统一入参 */
-interface RequestOptions {
+export interface RequestOptions {
   url: string
-  params?: any
+  params?: Record<string, unknown>
   silent?: boolean
+  /** 组件级取消信号，传入后组件卸载时可自动取消未完成请求 */
+  signal?: AbortSignal
 }
 
 /** 扩展 axios 配置，支持 silent 静默与 __retryCount 重试计数 */
@@ -80,6 +82,13 @@ function addPending(config: AxiosRequestConfig): void {
   const key = getRequestKey(config)
   if (key !== null && !pendingMap.has(key)) {
     const controller = new AbortController()
+    // GET 去重使用独立 controller，但需与组件级 signal 联动：组件卸载时一并取消
+    const externalSignal = config.signal
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort()
+      // axios 的 GenericAbortSignal 将 addEventListener 声明为可选，运行时实际存在
+      else externalSignal.addEventListener?.('abort', () => controller.abort(), { once: true })
+    }
     config.signal = controller.signal
     pendingMap.set(key, controller)
   }
@@ -118,10 +127,11 @@ async function handleUnauthorized(): Promise<void> {
 const IMAGE_FIELDS = new Set(['image', 'images', 'avatar', 'thumb', 'icon', 'logo', 'pic', 'photo', 'cover', 'img'])
 
 /** 递归转换图片路径：剥离响应数据中的图片域名前缀 */
-function processImages(data: any): any {
+export function processImages(data: unknown): unknown {
   if (!data || typeof data !== 'object') return data
   if (Array.isArray(data)) return data.map(item => processImages(item))
-  const processedData = { ...data }
+  const obj = data as Record<string, unknown>
+  const processedData: Record<string, unknown> = { ...obj }
   Object.keys(processedData).forEach(key => {
     const value = processedData[key]
     if (typeof value === 'string') {
@@ -170,42 +180,53 @@ const statusMessages: Record<number, string> = {
  * 仅重试"请求未到达服务器"的网络错误与超时，
  * 不重试 5xx（服务器已处理请求，重复提交有副作用风险）
  */
-function isRetryableError(error: any): boolean {
+export function isRetryableError(error: unknown): boolean {
   if (!error) return false
-  return error.code === 'ECONNABORTED' || error.message === 'Network Error'
+  const err = error as { code?: string; message?: string }
+  return err.code === 'ECONNABORTED' || err.message === 'Network Error'
+}
+
+/** 内部使用的 axios 错误类型（扩展了 silent/__retryCount） */
+type ExtendedAxiosError = {
+  config?: AxiosRequestConfig
+  response?: { status: number }
+  message: string
+  code?: string
 }
 
 service.interceptors.response.use(
-  (response): any => {
+  // 成功拦截器：处理图片域名，保留 AxiosResponse 包装（调用方通过 GET/POST/UPLOAD 提取 .data）
+  (response: AxiosResponse): AxiosResponse => {
     removePending(response.config)
-    const resData = response.data as ApiResult
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && resData?.data) {
-      resData.data = processImages(resData.data)
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && response.data?.data) {
+      response.data.data = processImages(response.data.data)
     }
-    return resData
+    return response
   },
-  async (err: any) => {
+  // 错误拦截器：401 登出 / 重试 / Toast 提示
+  async (rawError: unknown) => {
+    const err = rawError as ExtendedAxiosError
     if (err.config) removePending(err.config)
-    if (axios.isCancel(err)) return Promise.reject(err)
+    if (axios.isCancel(rawError)) return Promise.reject(rawError)
 
     const status = err?.response?.status
 
     // 401 自动登出
     if (status === 401) {
       await handleUnauthorized()
-      return Promise.reject(err)
+      return Promise.reject(rawError)
     }
 
     // 网络错误/超时自动重试
     const retryCount = err.config?.__retryCount || 0
-    if (retryCount < MAX_RETRY && isRetryableError(err)) {
-      err.config.__retryCount = retryCount + 1
+    if (retryCount < MAX_RETRY && isRetryableError(rawError)) {
+      err.config!.__retryCount = retryCount + 1
       await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)))
-      return service.request(err.config)
+      return service.request(err.config!)
     }
 
     // 错误提示
-    if (err?.response) {
+    if (err?.response && status !== undefined) {
       err.message = statusMessages[status] || `连接错误${status}`
     } else {
       err.message = err.message === 'canceled' ? '操作已取消' : '连接到服务器失败'
@@ -215,7 +236,7 @@ service.interceptors.response.use(
     if (!err.config?.silent) {
       showFailToast({ message: err.message, duration: 2000 })
     }
-    return Promise.reject(err)
+    return Promise.reject(rawError)
   }
 )
 
@@ -228,7 +249,9 @@ service.interceptors.response.use(
  * @param data.silent 是否关闭全局错误提示
  */
 const GET = (data: RequestOptions): Promise<ApiResult> =>
-  service.get(data.url, { params: data.params, silent: data.silent }) as unknown as Promise<ApiResult>
+  service
+    .get<ApiResult>(data.url, { params: data.params, silent: data.silent, signal: data.signal })
+    .then(res => res.data)
 
 /**
  * POST 请求
@@ -238,7 +261,7 @@ const GET = (data: RequestOptions): Promise<ApiResult> =>
  * @param data.silent 是否关闭全局错误提示
  */
 const POST = (data: RequestOptions): Promise<ApiResult> =>
-  service.post(data.url, data.params, { silent: data.silent }) as unknown as Promise<ApiResult>
+  service.post<ApiResult>(data.url, data.params, { silent: data.silent, signal: data.signal }).then(res => res.data)
 
 /**
  * 文件上传（支持多文件/数组字段）
@@ -249,26 +272,30 @@ const POST = (data: RequestOptions): Promise<ApiResult> =>
  */
 const UPLOAD = (data: RequestOptions): Promise<ApiResult> => {
   const formData = new FormData()
-  if (data.params) {
-    Object.keys(data.params).forEach(key => {
-      const value = data.params[key]
+  const params = data.params
+  if (params) {
+    Object.keys(params).forEach(key => {
+      const value = params[key]
       if (value instanceof FileList) {
         Array.from(value).forEach(file => formData.append(key, file))
       } else if (Array.isArray(value)) {
-        value.forEach(item => formData.append(key, item))
+        value.forEach(item => formData.append(key, item as string | Blob))
       } else if (value !== undefined && value !== null) {
-        formData.append(key, value)
+        formData.append(key, value as string | Blob)
       }
     })
   }
-  return service.post(data.url, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    silent: data.silent
-  }) as unknown as Promise<ApiResult>
+  return service
+    .post<ApiResult>(data.url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      silent: data.silent,
+      signal: data.signal
+    })
+    .then(res => res.data)
 }
 
 /** 判断错误是否为请求被取消（供业务层 catch 使用，避免直接依赖全局 axios） */
 const isCancel = axios.isCancel
 
-export { GET, POST, UPLOAD, isCancel, processImages, isRetryableError, type ApiResult, type RequestOptions }
+export { GET, POST, UPLOAD, isCancel }
 export default service

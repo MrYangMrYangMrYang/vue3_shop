@@ -1,0 +1,17 @@
+{
+  "name": "家居商城 - 移动端电商购物平台",
+  "short_name": "家居商城",
+  "description": "基于 Vue 3 + TypeScript + Vite + Vant 构建的移动端电商平台",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f8fa",
+  "theme_color": "#FF464E",
+  "icons": [
+    {
+      "src": "/jaiju.ico",
+      "sizes": "48x48"
+    }
+  ],
+  "lang": "zh-CN"
+}

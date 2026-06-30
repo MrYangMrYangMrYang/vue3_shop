@@ -10,7 +10,7 @@ export interface CountdownOrder {
   id: string | number
   status?: string | number
   createtime?: string | number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

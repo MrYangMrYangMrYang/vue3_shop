@@ -46,6 +46,24 @@ const getOrderStatusClass = (status: string | number | undefined): string => {
   return `status-${statusStr}`
 }
 
+/** 状态码到 CSS 颜色的映射（与 OrderCard 的 scoped CSS 保持一致） */
+const ORDER_STATUS_COLOR_MAP: Record<string, string> = {
+  [ORDER_STATUS.ALL]: 'var(--text-secondary)',
+  [ORDER_STATUS.PENDING_PAYMENT]: '#ff464e',
+  [ORDER_STATUS.PENDING_SHIP]: '#ff9500',
+  [ORDER_STATUS.PENDING_RECEIVE]: '#07c160',
+  [ORDER_STATUS.PENDING_REVIEW]: 'var(--primary-color)',
+  [ORDER_STATUS.COMPLETED]: 'var(--text-secondary)',
+  [ORDER_STATUS.AFTER_SALE]: '#ff976a',
+  [ORDER_STATUS.CANCELLED]: 'var(--text-placeholder)'
+}
+
+/** 获取状态对应的 CSS 颜色值（用于内联 style 场景） */
+const getOrderStatusColor = (status: string | number | undefined): string => {
+  if (status == null) return 'var(--text-secondary)'
+  return ORDER_STATUS_COLOR_MAP[String(status)] || 'var(--text-secondary)'
+}
+
 /** 判断是否为待支付状态 */
 const isPendingPayment = (status: string | number | undefined): boolean =>
   status != null && String(status) === ORDER_STATUS.PENDING_PAYMENT
@@ -57,9 +75,11 @@ const isCancelled = (status: string | number | undefined): boolean =>
 export {
   ORDER_STATUS,
   ORDER_STATUS_MAP,
+  ORDER_STATUS_COLOR_MAP,
   ORDER_PAYMENT_TIMEOUT_MS,
   getOrderStatusText,
   getOrderStatusClass,
+  getOrderStatusColor,
   isPendingPayment,
   isCancelled,
   type OrderStatusValue

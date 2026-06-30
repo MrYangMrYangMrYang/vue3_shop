@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Vite-4.x-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Vant-4.x-07C160?style=flat-square&logo=vant&logoColor=white" alt="Vant" />
   <img src="https://img.shields.io/badge/Pinia-3.x-F9A825?style=flat-square&logo=pinia&logoColor=white" alt="Pinia" />
-  <img src="https://img.shields.io/badge/Vitest-163%20tests-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt="Vitest" />
+  <img src="https://img.shields.io/badge/Vitest-241%20tests-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt="Vitest" />
   <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" />
   <a href="http://8.163.98.227:8083" target="_blank">
     <img src="https://img.shields.io/badge/Preview-Online-green?style=flat-square&logo=google-chrome&logoColor=white" alt="Online Preview" />
@@ -44,14 +44,15 @@
 
 ## ✨ 项目简介
 
-Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 Composition API + `<script setup>` + TypeScript 语法开发，覆盖从用户注册登录、商品浏览、购物车管理、订单处理到售后服务的完整电商业务闭环。工程化方面配备 TypeScript 类型检查、Vitest 单元测试（163 用例 / 98.64% 覆盖率）、ESLint + Prettier 代码规范、Husky + commitlint 提交规范、GitHub Actions CI 全流程质量门禁。
+Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 Composition API + `<script setup>` + TypeScript 语法开发，覆盖从用户注册登录、商品浏览、购物车管理、订单处理到售后服务的完整电商业务闭环。工程化方面配备 TypeScript 类型检查、Vitest 单元测试（241 用例）、ESLint + Prettier 代码规范、Husky + commitlint 提交规范、GitHub Actions CI 全流程质量门禁。
 
 ---
 
 ## 📸 项目截图
 
-<!-- 截图占位：取消注释并替换为实际截图路径
+> 💡 将截图放入 `docs/screenshots/` 目录后，取消注释下方表格即可展示。
 
+<!--
 <table>
   <tr>
     <td width="33%" align="center"><img src="docs/screenshots/home.png" alt="首页"><br>首页</td>
@@ -64,7 +65,6 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
     <td width="33%" align="center"><img src="docs/screenshots/business.png" alt="个人中心"><br>个人中心</td>
   </tr>
 </table>
-
 -->
 
 ---
@@ -180,7 +180,7 @@ vue_shop/
 │   ├── components/                  # 页面组件
 │   │   ├── business/                # 用户中心（资料、邮箱、地址管理）
 │   │   ├── cart/                    # 购物车（列表、结算）
-│   │   ├── common/                  # 公共组件（底部导航、网络错误页）
+│   │   ├── common/                  # 公共组件（底部导航、网络错误页、错误边界）
 │   │   ├── order/                   # 订单（列表、详情、物流、评价）
 │   │   ├── product/                 # 商品（列表、详情、SKU 选择器）
 │   │   ├── home.vue                 # 首页
@@ -188,14 +188,15 @@ vue_shop/
 │   │   ├── register.vue             # 注册页（lang="ts"）
 │   │   └── NotFound.vue             # 404 兜底页
 │   ├── constants/order.ts           # 常量定义（订单状态枚举）
-│   ├── hooks/                       # Composable（useCountdown / useBack，.ts）
+│   ├── hooks/                       # Composable（useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit，.ts）
 │   ├── routers/index.ts             # 路由配置与守卫（含 RouteMeta 类型扩展）
 │   ├── services/request.ts          # 请求层（Axios 独立实例、拦截器、去重、重试）
-│   ├── stores/                      # Pinia 状态（user / cart / pendingPayment / completedLocalOrders，.ts）
-│   ├── utils/                       # 工具函数（10 个 .ts：cache / currency / date / debounce / throttle / validate 等）
-│   │   └── __tests__/               # 单元测试（10 个 .test.ts，88 用例）
+│   ├── stores/                      # Pinia 状态（user / cart / pendingPayment，.ts）
+│   ├── types/                       # 类型声明扩展（vant.d.ts）
+│   ├── utils/                       # 工具函数（11 个 .ts：cache / currency / date / debounce / throttle / validate / mask 等）
+│   │   └── __tests__/               # 单元测试（11 个 .test.ts，97 用例）
 │   ├── App.vue                      # 根组件（suspense + 路由切换动画）
-│   ├── main.ts                      # 应用入口（全局错误处理）
+│   ├── main.ts                      # 应用入口（全局错误处理 + Web Vitals 上报）
 │   └── env.d.ts                     # Vite 环境变量类型声明
 ├── .eslintrc.cjs / .prettierrc      # 代码规范配置
 ├── .env.development / .env.production / .env.example  # 环境变量
@@ -214,9 +215,9 @@ vue_shop/
 ┌──────────────────────────────────────────────────┐
 │  View Layer        页面组件（home / list / info） │
 ├──────────────────────────────────────────────────┤
-│  Composable Layer  Hooks 复用逻辑（useCountdown） │
+│  Composable Layer  Hooks 复用逻辑（useCountdown / useCartBadge / useCheckoutSubmit） │
 ├──────────────────────────────────────────────────┤
-│  State Layer       Pinia Store（user / cart）     │
+│  State Layer       Pinia Store（user / cart / pendingPayment） │
 ├──────────────────────────────────────────────────┤
 │  Service Layer     Axios 封装（拦截器 + 去重）     │
 ├──────────────────────────────────────────────────┤
@@ -252,16 +253,16 @@ vue_shop/
 
 采用 `allowJs` 策略实现 JS→TS 平滑过渡，非组件层 100% TS 化，核心业务组件已迁移至 `<script setup lang="ts">`。已开启 `strictNullChecks` + `noImplicitAny` 核心类型检查。
 
-| 层级      | 文件数 | 说明                                                                                |
-| --------- | ------ | ----------------------------------------------------------------------------------- |
-| utils     | 10     | 全部 `.ts`，含完整 JSDoc + 类型导出                                                 |
-| stores    | 4      | user / cart / pendingPayment / completedLocalOrders                                 |
-| hooks     | 3      | useCountdown / useBack / index                                                      |
-| services  | 1      | request.ts（ApiResult / RequestOptions 接口 + 拦截器）                              |
-| constants | 1      | order.ts（ORDER_STATUS 枚举）                                                       |
-| routers   | 1      | index.ts（含 RouteMeta 模块增强）                                                   |
-| 入口      | 2      | main.ts / env.d.ts（Vite 环境变量类型）                                             |
-| 组件      | 7      | SkuPanel / login / register / product-info / cart-confirm / order-index / OrderCard |
+| 层级      | 文件数 | 说明                                                                                                                                                                                            |
+| --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| utils     | 11     | 全部 `.ts`，含完整 JSDoc + 类型导出                                                                                                                                                             |
+| stores    | 3      | user / cart / pendingPayment                                                                                                                                                                    |
+| hooks     | 7      | useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit                                                                                           |
+| services  | 1      | request.ts（ApiResult / RequestOptions 接口 + 拦截器）                                                                                                                                          |
+| constants | 1      | order.ts（ORDER_STATUS 枚举）                                                                                                                                                                   |
+| routers   | 1      | index.ts（含 RouteMeta 模块增强）                                                                                                                                                               |
+| 入口      | 2      | main.ts / env.d.ts（Vite 环境变量类型）                                                                                                                                                         |
+| 组件      | 15     | 全部 `<script setup lang="ts">`：home / login / register / list / info / SkuPanel / cart-index / confirm / ConfirmSkeleton / order-index / info / OrderCard / express / ErrorBoundary / profile |
 
 ```bash
 npm run type-check   # vue-tsc --noEmit，0 errors
@@ -269,20 +270,21 @@ npm run type-check   # vue-tsc --noEmit，0 errors
 
 ### 单元测试
 
-基于 Vitest + happy-dom，覆盖 utils / stores / hooks / services 四层，共 **163 个用例**。
+基于 Vitest + happy-dom，覆盖 utils / stores / hooks / services / components 五层，共 **241 个用例**（24 个测试文件）：
+
+| 层级       | 测试文件 | 用例数 | 覆盖重点                                                                       |
+| ---------- | -------- | ------ | ------------------------------------------------------------------------------ |
+| utils      | 11       | 97     | cache / currency / date / debounce / throttle / validate / mask 等             |
+| stores     | 3        | 53     | pendingPayment（32）/ user（13）/ cart（8）                                    |
+| services   | 2        | 41     | request 拦截器（token / 401 / 重试 / silent）+ 去重 / 图片域名转换             |
+| hooks      | 4        | 36     | useCountdown（11）/ useCheckoutSubmit（12）/ useAvatar（7）/ useCartBadge（6） |
+| components | 4        | 14     | ErrorBoundary（4）/ SkuPanel（5）/ NetworkError / NotFound                     |
 
 ```bash
 npm run test              # 单次运行
 npm run test:watch        # 监听模式
 npm run test:coverage     # 覆盖率报告
 ```
-
-| 指标 | 覆盖率 |
-| ---- | ------ |
-| 语句 | 98.64% |
-| 分支 | 98.86% |
-| 函数 | 100%   |
-| 行   | 98.38% |
 
 ### 代码规范
 
@@ -349,28 +351,38 @@ checkout → Node 20 → npm ci → lint:check → type-check → test → build
 
 ### 交互层优化
 
-| 优化项           | 实现方式                        | 效果                        |
-| ---------------- | ------------------------------- | --------------------------- |
-| **图片懒加载**   | Vant Lazyload 组件              | 首屏只加载可视区域图片      |
-| **分类导航滑动** | `flex: 0 0 25%` + `scroll-snap` | 一行固定 4 个，滑动吸附对齐 |
-| **路由切换动画** | `transition` + `fade-slide`     | 页面切换流畅过渡            |
+| 优化项           | 实现方式                        | 效果                         |
+| ---------------- | ------------------------------- | ---------------------------- |
+| **图片懒加载**   | Vant Lazyload 组件              | 首屏只加载可视区域图片       |
+| **分类导航滑动** | `flex: 0 0 25%` + `scroll-snap` | 一行固定 4 个，滑动吸附对齐  |
+| **路由切换动画** | `transition` + `fade-slide`     | 页面切换流畅过渡             |
+| **首屏骨架屏**   | `ConfirmSkeleton` 等占位组件    | 数据加载前避免白屏闪烁       |
+| **PWA 离线缓存** | Service Worker（Network First） | 生产环境离线可访问，弱网兜底 |
+
+### 稳定性优化
+
+| 优化项               | 实现方式                                           | 效果                                  |
+| -------------------- | -------------------------------------------------- | ------------------------------------- |
+| **全局错误边界**     | `ErrorBoundary` + `onErrorCaptured` 捕获渲染异常   | 子组件崩溃时降级 UI，不白屏，支持重试 |
+| **组件卸载取消请求** | `useAbortController` 在 `onBeforeUnmount` 中 abort | 避免卸载后 setState，防止内存泄漏     |
+| **待付款超时清理**   | `pendingPayment` store 定时扫描 + 过期自动归档     | 防止僵尸订单堆积，购物车角标准确      |
 
 ### 构建产物
 
 ```
 dist/assets/
-├── vue-vendor-*.js          109 KB (gzip: 43 KB)   # Vue + Router + Pinia
-├── vant-vendor-*.js         128 KB (gzip: 45 KB)   # Vant 组件库
-├── index-*.js               47 KB  (gzip: 17 KB)   # 应用入口 + 路由
-├── info-*.js                36 KB  (gzip: 14 KB)   # 商品详情（含 SkuPanel）
+├── vue-vendor-*.js          112 KB (gzip: 44 KB)   # Vue + Router + Pinia
+├── vant-vendor-*.js         134 KB (gzip: 47 KB)   # Vant 组件库
+├── index-*.js               72 KB  (gzip: 26 KB)   # 应用入口 + 路由 + Web Vitals
+├── info-*.js                36 KB  (gzip: 15 KB)   # 商品详情（含 SkuPanel）
 ├── index-*.js (order)       11 KB  (gzip: 4.4 KB)  # 订单列表
-├── confirm-*.js             8.5 KB (gzip: 3.7 KB)  # 确认订单
+├── confirm-*.js             7.6 KB (gzip: 3.6 KB)  # 确认订单（含 ConfirmSkeleton）
 ├── list-*.js                7 KB   (gzip: 3 KB)    # 商品列表
-├── home-*.js                5 KB   (gzip: 2.3 KB)  # 首页
+├── home-*.js                5.1 KB (gzip: 2.3 KB)  # 首页
 └── ...                      其余 chunk 均 < 5 KB，按需加载
 ```
 
-> 业务 chunk 最大 36 KB（商品详情），首屏仅加载 vue-vendor + vant-vendor + index + home ≈ 289 KB（gzip ≈ 108 KB）。
+> 业务 chunk 最大 36 KB（商品详情），首屏仅加载 vue-vendor + vant-vendor + index + home ≈ 327 KB（gzip ≈ 119 KB）。
 
 ---
 
@@ -405,18 +417,18 @@ dist/assets/
 
 - 商品数量调整、单选/全选、删除
 - 实时总价计算、批量结算跳转
-- 购物车数量 Store 同步底部导航 Badge
+- 待付款商品自动隐藏，`useCartBadge` 统一计算底部导航 Badge（后端全量 - 待付款占用）
 
-**关键文件**: [`cart/index.vue`](src/components/cart/index.vue) · [`cart/confirm.vue`](src/components/cart/confirm.vue) · [`cart.ts`](src/stores/cart.ts)
+**关键文件**: [`cart/index.vue`](src/components/cart/index.vue) · [`cart/confirm.vue`](src/components/cart/confirm.vue) · [`cart.ts`](src/stores/cart.ts) · [`useCartBadge.ts`](src/hooks/useCartBadge.ts)
 
 ### 订单管理
 
 - 多状态 Tab 筛选 + 待支付 30 分钟倒计时
-- 支付流程（本地模拟 + 服务端真实支付）
+- 提交时本地化、支付时才真下单（适配后端无待付款状态的业务模型）
+- 待支付订单自动清理过期记录
 - 物流查询、确认收货、商品评价、申请售后
-- 待支付订单自动清理过期、本地订单离线查看
 
-**关键文件**: [`order/`](src/components/order/) · [`pendingPayment.ts`](src/stores/pendingPayment.ts) · [`completedLocalOrders.ts`](src/stores/completedLocalOrders.ts) · [`order.ts`](src/constants/order.ts) · [`useCountdown.ts`](src/hooks/useCountdown.ts)
+**关键文件**: [`order/`](src/components/order/) · [`pendingPayment.ts`](src/stores/pendingPayment.ts) · [`order.ts`](src/constants/order.ts) · [`useCountdown.ts`](src/hooks/useCountdown.ts)
 
 ---
 

@@ -46,8 +46,18 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const userInfo = ref<BusinessUserInfo | null>(getStoredUser())
+  /** 从 localStorage 恢复选中地址 */
+  const getStoredAddress = (): AddressInfo | null => {
+    try {
+      const raw = localStorage.getItem('selected_address')
+      return raw ? (JSON.parse(raw) as AddressInfo) : null
+    } catch {
+      return null
+    }
+  }
+
   const selectedAddressId = ref<string | null>(localStorage.getItem('address_id'))
-  const selectedAddress = ref<AddressInfo | null>(null)
+  const selectedAddress = ref<AddressInfo | null>(getStoredAddress())
   const isChecked = ref<boolean>(false)
   const lastCheckTime = ref<number>(0)
 
@@ -95,6 +105,7 @@ export const useUserStore = defineStore('user', () => {
     lastCheckTime.value = 0
     localStorage.removeItem('business')
     localStorage.removeItem('address_id')
+    localStorage.removeItem('selected_address')
     useCartStore().clear()
   }
 
@@ -108,6 +119,8 @@ export const useUserStore = defineStore('user', () => {
   /** 设置选中地址对象 */
   const setSelectedAddress = (address: AddressInfo | null): void => {
     selectedAddress.value = address || null
+    if (address) localStorage.setItem('selected_address', JSON.stringify(address))
+    else localStorage.removeItem('selected_address')
   }
 
   return {

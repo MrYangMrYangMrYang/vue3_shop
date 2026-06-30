@@ -14,7 +14,7 @@
     <div class="login-bg"></div>
     <div class="login-content">
       <div class="avatar-container">
-        <img src="/images/tx.png" class="avatar" />
+        <img src="/images/tx.png" class="avatar" alt="用户头像" />
       </div>
       <div class="login-card">
         <h2 class="login-title">欢迎登录</h2>
@@ -81,6 +81,12 @@ onBeforeMount(() => {
 /** 登录表单数据 */
 const business = reactive<{ mobile: string; password: string }>({ mobile: '', password: '' })
 
+/** 表单提交值（Vant 表单 submit 事件回调参数） */
+interface LoginFormValues {
+  mobile: string
+  password: string
+}
+
 /** 表单验证规则 */
 const rules = reactive<Record<string, FieldRule[]>>({
   mobile: [
@@ -94,7 +100,7 @@ const rules = reactive<Record<string, FieldRule[]>>({
 })
 
 /** 提交登录 */
-const login = async (values: Record<string, any>): Promise<boolean | void> => {
+const login = async (values: LoginFormValues): Promise<boolean | void> => {
   if (submitting.value) return false
   const data = { mobile: values.mobile, password: values.password }
 
@@ -110,9 +116,9 @@ const login = async (values: Record<string, any>): Promise<boolean | void> => {
     showSuccessToast({
       message: result.msg,
       onClose: () => {
-        userStore.setUserInfo(result.data)
+        userStore.setUserInfo(result.data as Parameters<typeof userStore.setUserInfo>[0])
         // 优先回跳来源页（路由守卫 / 401 拦截携带的 redirect），否则用后端返回地址
-        router.push(route.query.redirect || result.url)
+        router.push((route.query.redirect || result.url) as string)
       }
     })
   } catch (error) {

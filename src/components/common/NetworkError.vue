@@ -9,7 +9,7 @@
   <NetworkError v-if="hasError" @retry="retryFn" />
 -->
 <template>
-  <div class="network-error">
+  <div class="network-error" role="alert">
     <van-empty image="error" :description="description">
       <van-button round type="primary" class="retry-btn" @click="$emit('retry')">{{ buttonText }}</van-button>
     </van-empty>

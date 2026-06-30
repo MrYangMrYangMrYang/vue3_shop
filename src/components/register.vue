@@ -151,6 +151,14 @@ const business = reactive<{ mobile: string; password: string; confirmPassword: s
   code: ''
 })
 
+/** 表单提交值（Vant 表单 submit 事件回调参数） */
+interface RegisterFormValues {
+  mobile: string
+  password: string
+  confirmPassword: string
+  code: string
+}
+
 /** 手机号是否合法（控制验证码按钮可用性） */
 const isMobileValid = computed(() => isMobile(business.mobile))
 
@@ -206,7 +214,7 @@ const showAgreement = (title: string, content: string): void => {
 }
 
 /** 提交注册 */
-const register = async (values: Record<string, any>): Promise<boolean | void> => {
+const register = async (values: RegisterFormValues): Promise<boolean | void> => {
   if (submitting.value) return false
   if (!agreed.value) {
     showFailToast('请先阅读并同意用户协议')
@@ -227,7 +235,7 @@ const register = async (values: Record<string, any>): Promise<boolean | void> =>
     showSuccessToast({
       message: result.msg,
       onClose: () => {
-        router.push(result.url)
+        router.push(result.url as string)
       }
     })
   } catch (error) {

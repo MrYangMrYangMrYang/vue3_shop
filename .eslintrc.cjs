@@ -50,7 +50,7 @@ module.exports = {
           'warn',
           { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
         ],
-        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-explicit-any': 'warn',
         '@typescript-eslint/ban-ts-comment': 'off',
         '@typescript-eslint/no-empty-function': 'off',
         'no-unused-vars': 'off'
@@ -70,7 +70,7 @@ module.exports = {
           'warn',
           { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
         ],
-        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-explicit-any': 'warn',
         'no-unused-vars': 'off'
       }
     }

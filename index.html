@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/jaiju.ico" />
+    <link rel="apple-touch-icon" href="/jaiju.ico" />
 
     <!-- 移动端基础：viewport-fit=cover 启用 iPhone 刘海/Home Indicator 安全区 -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
 
     <!-- SEO 基础元信息 -->
@@ -27,11 +28,45 @@
       content="基于 Vue 3 + TypeScript + Vite + Vant 构建的移动端电商平台，覆盖完整购物业务闭环。"
     />
     <meta property="og:locale" content="zh_CN" />
+    <meta property="og:url" content="http://8.163.98.227:8083" />
+
+    <!-- JSON-LD 结构化数据：帮助搜索引擎理解网站内容 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "家居商城",
+        "url": "http://8.163.98.227:8083",
+        "description": "基于 Vue 3 + TypeScript + Vite + Vant 构建的移动端电商平台",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "http://8.163.98.227:8083/product/list?keywords={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
 
     <!-- 移动端浏览器主题色（地址栏配色） -->
     <meta name="theme-color" content="#FF464E" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="家居商城" />
   </head>
-  <body id="app">
+  <body>
+    <!-- 键盘导航：跳过导航栏直达主内容 -->
+    <a class="skip-link" href="#main-content">跳过导航，直达内容</a>
+    <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <!-- Service Worker 注册（生产环境生效） -->
+    <script>
+      if ('serviceWorker' in navigator && !window.location.hostname.includes('localhost')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
+        })
+      }
+    </script>
   </body>
 </html>

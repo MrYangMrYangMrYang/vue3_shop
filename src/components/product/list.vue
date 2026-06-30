@@ -60,7 +60,7 @@
           <li v-for="item in list" :key="item.id" class="product-item">
             <router-link :to="{ path: '/product/info', query: { proid: item.id } }" class="product-link">
               <div class="img-wrapper">
-                <img v-lazy="item.thumbs_text" />
+                <img v-lazy="item.thumbs_text" :alt="item.name" />
               </div>
               <div class="product-content">
                 <p class="title">{{ item.name }}</p>
@@ -85,33 +85,75 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, onActivated, onDeactivated } from 'vue'
-import { POST } from '@/services/request'
+import { POST, isCancel } from '@/services/request'
 import { showFailToast } from 'vant'
 import Menu from '@/components/common/Menu.vue'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
-import { useBack } from '@/hooks'
+import { useBack, useAbortController } from '@/hooks'
 import { debounce } from '@/utils/debounce'
 
 defineOptions({
   name: 'ProductList'
 })
 
+/** 商品列表项 */
+interface ProductItem {
+  id: string | number
+  thumbs_text: string
+  name: string
+  price: string | number
+  sales?: string | number
+}
+
+/** 下拉菜单选项 */
+interface DropdownOption {
+  text: string
+  value: string | number
+}
+
+/** 商品分类项（后端 /index/type 返回） */
+interface TypeItem {
+  id: string | number
+  name: string
+}
+
+/** 商品列表接口响应 */
+interface ListDataResponse {
+  TypeName?: string
+  list?: ProductItem[]
+}
+
+/** 列表视图状态缓存 */
+interface ListStateCache {
+  typeActive?: string | number
+  flagActive?: string
+  sortActive?: string
+  byActive?: string
+  keywords?: string
+  page?: number
+  finished?: boolean
+  list?: ProductItem[]
+  scrollTop?: number
+}
+
 const route = useRoute()
 const back = useBack()
+/** 组件级取消信号：卸载时自动取消未完成的列表/分类请求 */
+const signal = useAbortController()
 
 /** 解析分类ID，无效值返回0 */
-const parseTypeId = value => {
-  const parsed = parseInt(value, 10)
+const parseTypeId = (value: unknown): number => {
+  const parsed = parseInt(String(value), 10)
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
 const TypeActive = ref(parseTypeId(getRouteQueryValue(route.query, 'typeid', 0)))
-const list = ref([])
+const list = ref<ProductItem[]>([])
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
@@ -125,7 +167,7 @@ const keywords = ref(getRouteQueryValue(route.query, 'keywords', ''))
 const isFirstLoad = ref(true)
 const isLoading = ref(false)
 const isFromDetail = ref(false)
-let lastRouteQuery = {}
+let lastRouteQuery: Record<string, unknown> = {}
 const LIST_STATE_CACHE_KEY = 'product:list:view-state'
 
 const FlagList = [
@@ -135,7 +177,7 @@ const FlagList = [
   { text: '推荐', value: '3' }
 ]
 
-const TypeList = ref([{ text: '全部分类', value: 0 }])
+const TypeList = ref<DropdownOption[]>([{ text: '全部分类', value: 0 }])
 const TYPE_CACHE_KEY = 'product:type:list'
 const TYPE_CACHE_TTL = 5 * 60 * 1000
 
@@ -151,7 +193,7 @@ const ByList = [
 ]
 
 /** 切换分类并刷新列表 */
-const TypeToggle = async value => {
+const TypeToggle = async (value: number) => {
   TypeActive.value = value
   keywords.value = ''
   isFromDetail.value = false
@@ -159,21 +201,21 @@ const TypeToggle = async value => {
 }
 
 /** 切换标签（新品/热销/推荐）并刷新列表 */
-const FlagToggle = async value => {
+const FlagToggle = async (value: string) => {
   FlagActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
 /** 切换排序字段并刷新列表 */
-const SortToggle = async value => {
+const SortToggle = async (value: string) => {
   SortActive.value = value
   isFromDetail.value = false
   await refresh()
 }
 
 /** 切换排序方向（升序/降序）并刷新列表 */
-const ByToggle = async value => {
+const ByToggle = async (value: string) => {
   ByActive.value = value
   isFromDetail.value = false
   await refresh()
@@ -190,7 +232,7 @@ const resetFilters = async () => {
 }
 
 /** 搜索商品并刷新列表（防抖） */
-const search = debounce(async value => {
+const search = debounce(async (value: string) => {
   SearchShow.value = false
   keywords.value = value
   TypeActive.value = 0
@@ -199,8 +241,8 @@ const search = debounce(async value => {
 }, 300)
 
 /** 从缓存恢复列表状态（筛选条件、分页、数据） */
-const restoreListState = () => {
-  const cached = getCache(LIST_STATE_CACHE_KEY)
+const restoreListState = (): boolean => {
+  const cached = getCache<ListStateCache>(LIST_STATE_CACHE_KEY)
   if (!cached || typeof cached !== 'object') return false
   TypeActive.value = parseTypeId(cached.typeActive)
   FlagActive.value = cached.flagActive || '0'
@@ -274,11 +316,12 @@ const ListData = async () => {
         sort: SortActive.value,
         by: ByActive.value,
         keywords: keywords.value
-      }
+      },
+      signal
     })
 
     loading.value = false
-    const data = result.data || {}
+    const data = (result.data || {}) as ListDataResponse
     TypeName.value = data.TypeName || '全部商品'
 
     if (isBizFail(result) || !data.list || data.list.length <= 0) {
@@ -294,6 +337,8 @@ const ListData = async () => {
     }
   } catch (error) {
     loading.value = false
+    // 组件卸载导致的取消，静默退出不弹 Toast
+    if (isCancel(error)) return
     showFailToast('商品列表加载失败，请稍后重试')
   } finally {
     isLoading.value = false
@@ -302,7 +347,7 @@ const ListData = async () => {
 
 /** 加载商品分类列表（优先读缓存） */
 const type = async () => {
-  const cachedTypeList = getCache(TYPE_CACHE_KEY)
+  const cachedTypeList = getCache<DropdownOption[]>(TYPE_CACHE_KEY)
   if (cachedTypeList && Array.isArray(cachedTypeList) && cachedTypeList.length) {
     TypeList.value = cachedTypeList
     return
@@ -310,21 +355,24 @@ const type = async () => {
 
   try {
     const result = await POST({
-      url: '/index/type'
+      url: '/index/type',
+      signal
     })
 
     TypeList.value = [{ text: '全部分类', value: 0 }]
 
-    if (Array.isArray(result.data) && result.data.length) {
-      for (const item of result.data) {
+    const typeData = result.data as TypeItem[] | undefined
+    if (Array.isArray(typeData) && typeData.length) {
+      for (const item of typeData) {
         TypeList.value.push({
           text: item.name,
-          value: parseInt(item.id, 10)
+          value: parseInt(String(item.id), 10)
         })
       }
     }
     setCache(TYPE_CACHE_KEY, TypeList.value, TYPE_CACHE_TTL)
   } catch (error) {
+    if (isCancel(error)) return
     showFailToast('分类加载失败，请稍后重试')
   }
 }
@@ -344,7 +392,7 @@ watch(
   () => route.query.keywords,
   (newKeywords, oldKeywords) => {
     if (newKeywords !== oldKeywords && !isFirstLoad.value) {
-      keywords.value = newKeywords || ''
+      keywords.value = (newKeywords as string) || ''
       isFromDetail.value = false
       refresh()
     }
@@ -357,7 +405,7 @@ onActivated(() => {
   if (!queryChanged) {
     if (restoreListState()) {
       nextTick(() => {
-        const cached = getCache(LIST_STATE_CACHE_KEY)
+        const cached = getCache<ListStateCache>(LIST_STATE_CACHE_KEY)
         const scrollTop = Number(cached?.scrollTop || 0)
         window.scrollTo(0, scrollTop)
       })
@@ -415,7 +463,7 @@ onMounted(async () => {
   const restored = restoreListState()
   await nextTick()
   if (restored) {
-    const cached = getCache(LIST_STATE_CACHE_KEY)
+    const cached = getCache<ListStateCache>(LIST_STATE_CACHE_KEY)
     const scrollTop = Number(cached?.scrollTop || 0)
     window.scrollTo(0, scrollTop)
     return

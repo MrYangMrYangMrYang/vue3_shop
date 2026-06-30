@@ -9,6 +9,8 @@
 <template>
   <van-tabbar
     route
+    role="navigation"
+    aria-label="主导航"
     active-color="var(--primary-color)"
     inactive-color="#969799"
     placeholder
@@ -16,21 +18,28 @@
     safe-area-inset-bottom
     class="custom-tabbar"
   >
-    <van-tabbar-item to="/" icon="wap-home-o">首页</van-tabbar-item>
-    <van-tabbar-item to="/cart/index" icon="cart-o" :badge="cartStore.count > 0 ? cartStore.count : null">
+    <van-tabbar-item to="/" icon="wap-home-o" aria-label="首页">首页</van-tabbar-item>
+    <van-tabbar-item
+      to="/cart/index"
+      icon="cart-o"
+      :badge="badgeCount > 0 ? badgeCount : null"
+      :aria-label="`购物车${badgeCount > 0 ? '，' + badgeCount + '件商品' : ''}`"
+    >
       购物车
     </van-tabbar-item>
-    <van-tabbar-item to="/business/index" icon="manager-o">我的</van-tabbar-item>
+    <van-tabbar-item to="/business/index" icon="manager-o" aria-label="个人中心">我的</van-tabbar-item>
   </van-tabbar>
 </template>
 
 <script setup>
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
+import { useCartBadge } from '@/hooks'
 import { onMounted } from 'vue'
 
 const cartStore = useCartStore()
 const userStore = useUserStore()
+const badgeCount = useCartBadge()
 
 /** 挂载时同步购物车徽标数量 */
 onMounted(() => {

@@ -5,7 +5,9 @@
 
 interface BizResult {
   code?: number | string
-  [key: string]: any
+  msg?: string
+  data?: unknown
+  [key: string]: unknown
 }
 
 /** 提取业务状态码 */

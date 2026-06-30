@@ -15,7 +15,7 @@
       <div class="user-info-card">
         <router-link to="/business/profile" class="user-link">
           <div class="avatar-wrapper">
-            <img :src="displayAvatar" class="avatar" @error="handleAvatarError" />
+            <img :src="displayAvatar" class="avatar" alt="用户头像" @error="handleAvatarError" />
           </div>
           <div class="user-detail">
             <div class="nickname">{{ displayNickname }}</div>
@@ -43,11 +43,11 @@ defineOptions({ name: 'Business' })
 
 import Menu from '@/components/common/Menu.vue'
 import { useUserStore } from '@/stores/user'
+import { useAvatar } from '@/hooks/useAvatar'
+import { maskMobile } from '@/utils/mask'
 import { computed } from 'vue'
 
 const userStore = useUserStore()
-
-const defaultAvatar = '/images/tx.png'
 
 /** 用户信息（直接引用 store，保证登出/改资料后视图同步） */
 const userInfo = computed(() => userStore.userInfo || {})
@@ -56,16 +56,7 @@ const userInfo = computed(() => userStore.userInfo || {})
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const maskedMobile = computed(() => maskMobile(userInfo.value.mobile))
 
-/** 后端默认头像URL特征 */
-const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
-
-/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
-const displayAvatar = computed(() => {
-  const avatar = userInfo.value.avatar_text
-  if (!avatar) return defaultAvatar
-  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
-  return avatar
-})
+const { displayAvatar, handleAvatarError } = useAvatar(() => userInfo.value.avatar_text)
 
 /** 智能显示昵称（手机号自动脱敏） */
 const displayNickname = computed(() => {
@@ -74,19 +65,6 @@ const displayNickname = computed(() => {
   if (/^1\d{10}$/.test(nick)) return `${nick.slice(0, 3)}****${nick.slice(7)}`
   return nick
 })
-
-/** 手机号脱敏 */
-const maskMobile = mobile => {
-  if (!mobile) return ''
-  const mobileStr = String(mobile).trim()
-  if (!/^1\d{10}$/.test(mobileStr)) return mobileStr
-  return `${mobileStr.slice(0, 3)}****${mobileStr.slice(7)}`
-}
-
-/** 头像加载失败处理 */
-const handleAvatarError = e => {
-  e.target.src = defaultAvatar
-}
 </script>
 
 <style scoped>

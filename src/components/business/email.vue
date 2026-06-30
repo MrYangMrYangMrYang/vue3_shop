@@ -16,7 +16,7 @@
     <div class="verify-container">
       <div class="user-info-section">
         <div class="avatar-wrapper">
-          <img :src="displayAvatar" @error="handleAvatarError" />
+          <img :src="displayAvatar" alt="用户头像" @error="handleAvatarError" />
         </div>
         <div class="tip-text">为了您的账号安全，请完成邮箱验证</div>
       </div>
@@ -69,12 +69,12 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { reactive, ref, computed, onBeforeUnmount } from 'vue'
+import { reactive, ref, onBeforeUnmount } from 'vue'
 import { showSuccessToast, showFailToast } from 'vant'
 import { POST } from '@/services/request'
 import { useUserStore } from '@/stores/user'
 import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
+import { useBack, useAvatar } from '@/hooks'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -85,24 +85,7 @@ const emcode = ref('')
 
 const back = useBack()
 
-/** 前端默认头像 */
-const defaultAvatar = '/images/tx.png'
-
-/** 后端默认头像URL特征 */
-const BACKEND_DEFAULT_AVATAR = '/assets/img/tx.jpg'
-
-/** 显示头像（用户自定义优先，后端默认→替换为前端默认） */
-const displayAvatar = computed(() => {
-  const avatar = business.avatar_text
-  if (!avatar) return defaultAvatar
-  if (avatar.includes(BACKEND_DEFAULT_AVATAR)) return defaultAvatar
-  return avatar
-})
-
-/** 头像加载失败处理 */
-const handleAvatarError = e => {
-  e.target.src = defaultAvatar
-}
+const { displayAvatar, handleAvatarError } = useAvatar(() => business.avatar_text)
 
 const content = ref('发送验证码')
 const sec = ref(60)

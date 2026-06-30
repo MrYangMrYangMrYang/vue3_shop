@@ -4,7 +4,6 @@
   @description 负责已选商品的列表展示、数量调整（步进器）、商品删除（左滑）及全选/勾选结算逻辑，
                是购物流程的核心页面，支持实时计算选中商品总价
   @requires stores/cart
-  @requires stores/user
   @requires services/request
   @example
   // 路由配置: /cart/index (需要登录)
@@ -24,7 +23,7 @@
         <div class="sk-info">
           <van-skeleton-title title-width="80%" />
           <van-skeleton-title title-width="40%" />
-          <van-skeleton-paragraph :row-width="['50%', '30%']" />
+          <van-skeleton-paragraph :row-width="['50%', '30%'] as unknown as string" />
         </div>
       </div>
     </div>
@@ -32,7 +31,7 @@
     <template v-else>
       <div class="cart-list-container">
         <van-checkbox-group v-model="checked" @change="CheckList">
-          <div class="cart-item" v-for="cart in cartlist" :key="cart.id">
+          <div class="cart-item" v-for="cart in visibleCartlist" :key="cart.id">
             <div class="checkbox-wrapper">
               <van-checkbox :name="cart.id" icon-size="20px" checked-color="#FF464E" />
             </div>
@@ -81,7 +80,7 @@
           </div>
         </van-checkbox-group>
 
-        <van-empty v-if="cartlist.length === 0" description="购物车空空如也" image="search">
+        <van-empty v-if="visibleCartlist.length === 0" description="购物车空空如也" image="search">
           <van-button round type="primary" class="go-shop-btn" to="/">去逛逛</van-button>
         </van-empty>
       </div>
@@ -95,53 +94,91 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineOptions({ name: 'Cart' })
 
 import { useRouter } from 'vue-router'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onBeforeMount } from 'vue'
 import Menu from '@/components/common/Menu.vue'
 import { POST, isCancel } from '@/services/request'
 import { showFailToast, showConfirmDialog } from 'vant'
-import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
-import { toFen, roundToTwo, formatCurrency } from '@/utils/currency'
+import { usePendingPaymentStore } from '@/stores/pendingPayment'
+import { toFen, roundToTwo, formatAmount } from '@/utils/currency'
 import { normalizeIdList } from '@/utils/params'
 import { isBizSuccess, isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
+import { useBack, useBusid } from '@/hooks'
+
+/** 购物车关联商品信息 */
+interface CartProduct {
+  id?: string | number
+  name?: string
+  thumbs_text?: string
+  image?: string
+  stock?: number | string
+}
+
+/** 购物车商品项 */
+interface CartItem {
+  id: string | number
+  nums: string | number
+  price: number
+  total: number
+  product?: CartProduct
+  proid?: string | number
+  thumbs_text?: string
+  image?: string
+  name?: string
+  proname?: string
+  stock?: number | string
+}
 
 const router = useRouter()
-const userStore = useUserStore()
 const cartStore = useCartStore()
+const pendingPaymentStore = usePendingPaymentStore()
 const back = useBack()
 
 /** 用户ID */
-const busid = computed(() => {
-  const login = userStore.userInfo || {}
-  return Object.hasOwn(login, 'id') ? login.id : 0
-})
+const busid = useBusid()
 
-const cartlist = ref([])
-const checked = ref([])
+const cartlist = ref<CartItem[]>([])
+const checked = ref<(string | number)[]>([])
 const toggle = ref(false)
 const mutating = ref(false)
 const loading = ref(true)
 
+/** 待付款订单占用的购物车 id 集合（这些商品在购物车中仅隐藏，支付成功后由后端删除） */
+const pendingCartIds = computed(() => {
+  const ids = new Set<string>()
+  pendingPaymentStore.orders.forEach(o => {
+    String(o.cartids || '')
+      .split(',')
+      .forEach(id => {
+        const trimmed = id.trim()
+        if (trimmed) ids.add(trimmed)
+      })
+  })
+  return ids
+})
+
+/** 过滤掉待付款商品的可见列表（全选/勾选/价格计算基于此） */
+const visibleCartlist = computed(() => cartlist.value.filter(item => !pendingCartIds.value.has(String(item.id))))
+
 /** 跳转商品详情 */
-const goToProduct = productId => {
+const goToProduct = (productId: string | number | undefined) => {
   if (productId) router.push({ path: '/product/info', query: { proid: productId } })
 }
 
 /** 加载购物车数据 */
 const CartData = async () => {
-  if (!busid.value) return
+  if (!busid) return
 
   try {
-    const result = await POST({ url: '/cart/index', params: { busid: busid.value } })
+    const result = await POST({ url: '/cart/index', params: { busid } })
 
     if (isBizSuccess(result)) {
-      cartlist.value = result.data || []
-      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums || 0, 10), 0)
+      cartlist.value = (result.data || []) as CartItem[]
+      const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(String(item.nums || 0), 10), 0)
       cartStore.setCount(totalNums)
     } else {
       cartlist.value = []
@@ -154,28 +191,26 @@ const CartData = async () => {
   }
 }
 
-watch(
-  busid,
-  newVal => {
-    if (newVal) CartData()
-    else {
-      cartlist.value = []
-      cartStore.setCount(0)
-      loading.value = false
-    }
-  },
-  { immediate: true }
-)
+/** 进入购物车页加载一次（购物车页路由守卫保证已登录，无需响应式监听登录态变化） */
+onBeforeMount(() => {
+  if (busid) {
+    CartData()
+  } else {
+    cartlist.value = []
+    cartStore.setCount(0)
+    loading.value = false
+  }
+})
 
 /** 全选/取消全选 */
 const ToggleCheck = () => {
-  if (toggle.value) checked.value = cartlist.value.map(item => item.id)
+  if (toggle.value) checked.value = visibleCartlist.value.map(item => item.id)
   else checked.value = []
 }
 
 /** 更新全选状态 */
 const CheckList = () => {
-  const list = cartlist.value.map(item => item.id)
+  const list = visibleCartlist.value.map(item => item.id)
   const result = checked.value.length === list.length && [...checked.value].sort().toString() === list.sort().toString()
   toggle.value = result
 }
@@ -183,36 +218,33 @@ const CheckList = () => {
 /** 计算选中商品总价（分） */
 const price = computed(() => {
   let sum = 0
-  cartlist.value.forEach(item => {
+  visibleCartlist.value.forEach(item => {
     if (checked.value.includes(item.id)) sum += roundToTwo(item.total)
   })
   return toFen(sum)
 })
 
-/** 格式化金额显示 */
-const formatAmount = amount => formatCurrency(amount)
-
 /** 计算单件商品小计 */
-const getCartTotal = cart => {
-  const total = cart.total || roundToTwo(cart.price) * parseInt(cart.nums || 0, 10)
+const getCartTotal = (cart: CartItem): string => {
+  const total = cart.total || roundToTwo(cart.price) * parseInt(String(cart.nums || 0), 10)
   return formatAmount(total)
 }
 
 /** 修改商品数量 */
-const CartStep = async (value, detail) => {
+const CartStep = async (value: string | number, detail: { name: string | number }) => {
   if (mutating.value) return
   mutating.value = true
-  const data = { busid: busid.value, cartid: detail.name, nums: value }
+  const data = { busid, cartid: detail.name, nums: value }
 
   try {
     const result = await POST({ url: '/cart/edit', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '操作失败')
       return false
     }
 
-    cartlist.value = result.data
-    const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums, 10), 0)
+    cartlist.value = result.data as CartItem[]
+    const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(String(item.nums), 10), 0)
     cartStore.setCount(totalNums)
   } catch (error) {
     showFailToast('更新购物车失败，请稍后重试')
@@ -222,7 +254,7 @@ const CartStep = async (value, detail) => {
 }
 
 /** 删除商品 */
-const CartDel = async cartid => {
+const CartDel = async (cartid: string | number) => {
   showConfirmDialog({
     title: '删除提醒',
     message: '是否确认删除该宝贝',
@@ -231,17 +263,17 @@ const CartDel = async cartid => {
     .then(async () => {
       if (mutating.value) return
       mutating.value = true
-      const data = { cartid, busid: busid.value }
+      const data = { cartid, busid }
 
       try {
         const result = await POST({ url: '/cart/del', params: data })
         if (isBizFail(result)) {
-          showFailToast(result.msg)
+          showFailToast(result.msg || '操作失败')
           return false
         }
 
-        cartlist.value = result.data
-        const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(item.nums, 10), 0)
+        cartlist.value = result.data as CartItem[]
+        const totalNums = cartlist.value.reduce((sum, item) => sum + parseInt(String(item.nums), 10), 0)
         cartStore.setCount(totalNums)
         checked.value = checked.value.filter(id => id !== cartid)
       } catch (error) {

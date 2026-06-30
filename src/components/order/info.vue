@@ -16,28 +16,11 @@
     <van-nav-bar title="订单详情" left-arrow @click-left="back" class="custom-nav" />
 
     <div class="order-content" v-if="list && list.id">
-      <div class="status-card">
-        <div class="status-header">
-          <van-icon name="clock-o" class="status-icon" />
-          <span class="status-text">{{ list.status_text }}</span>
-        </div>
-
-        <div v-if="isPendingPayment(list.status) && !isPaymentExpired(list.createtime)" class="countdown-bar">
-          <van-icon name="clock-o" />
-          <span>剩余付款时间: {{ countdownText || '计算中...' }}</span>
-        </div>
-
-        <div class="express-info" v-if="expressData">
-          <div class="express-item">
-            <van-icon name="logistics" />
-            <span>{{ expressData.expName }}: {{ list.exfasscode }}</span>
-          </div>
-          <div class="express-item" v-if="expressData.courier">
-            <van-icon name="manager-o" />
-            <span>联系人: {{ expressData.courier }} ({{ expressData.courierPhone }})</span>
-          </div>
-        </div>
-        <div v-else class="no-express">暂无物流信息</div>
+      <!-- 待付款倒计时 -->
+      <div v-if="isPendingPayment(list.status) && !isPaymentExpired(list.createtime)" class="countdown-bar">
+        <van-icon name="clock-o" />
+        <span class="countdown-label">剩余付款时间</span>
+        <span class="countdown-time">{{ countdownText || '30:00' }}</span>
       </div>
 
       <div class="address-card card-item" v-if="list.address">
@@ -51,93 +34,154 @@
         </div>
       </div>
 
-      <div class="goods-card card-item">
-        <div class="card-title">商品信息</div>
-        <div class="product-item" v-for="pro in prolist" :key="pro.id">
-          <van-card
-            :num="pro.pronum"
-            :price="pro.price"
-            :title="pro.ordproduct.name"
-            :thumb="pro.ordproduct.thumbs_text"
-            lazy-load
-          />
+      <!-- 订单信息整合卡片：商品 + 费用 + 元数据 -->
+      <div class="info-card card-item">
+        <!-- 头部：编号 + 状态 -->
+        <div class="info-header">
+          <span class="order-no">订单号: {{ list.code }}</span>
+          <span class="order-status" :style="{ color: statusColor }">{{ list.status_text }}</span>
         </div>
-        <div class="contact-service" @click="contacts">
-          <van-icon name="chat-o" />
-          <span>联系客服</span>
-        </div>
-      </div>
 
-      <div class="price-card card-item">
-        <div class="card-title">支付信息</div>
-        <van-cell title="商品总价" :value="'¥' + formatAmount(price)" />
-        <van-cell title="运费" value="¥0.00" />
-        <van-cell title="实付款" :value="'¥' + formatAmount(price)" class="total-price" />
-      </div>
-
-      <div class="order-meta card-item">
-        <div class="card-title">订单信息</div>
-        <div class="meta-item">
-          <span class="label">订单编号</span>
-          <div class="value-wrapper">
-            <span class="value">{{ list.code }}</span>
-            <van-icon name="copy-o" class="copy-icon" @click="copyOrderNo" />
+        <!-- 商品列表 -->
+        <div class="info-products">
+          <div class="product-row" v-for="pro in prolist" :key="pro.id">
+            <img v-lazy="pro.ordproduct.thumbs_text" class="product-thumb" :alt="pro.ordproduct.name" />
+            <div class="product-meta">
+              <div class="product-name">{{ pro.ordproduct.name }}</div>
+              <div class="product-price-qty">
+                <span class="pprice">¥{{ pro.price }}</span>
+                <span class="pqty">×{{ pro.pronum }}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="meta-item">
-          <span class="label">下单时间</span>
-          <span class="value">{{ list.createtime_text }}</span>
+
+        <!-- 物流信息 -->
+        <div class="info-divider"></div>
+        <div class="info-express" v-if="expressData">
+          <van-icon name="logistics" />
+          <span>{{ expressData.expName }}: {{ list.exfasscode }}</span>
         </div>
-        <div class="meta-item" v-if="list.paytime_text">
-          <span class="label">付款时间</span>
-          <span class="value">{{ list.paytime_text }}</span>
+
+        <!-- 费用明细 -->
+        <div class="info-divider"></div>
+        <div class="info-fee">
+          <div class="fee-row">
+            <span class="fee-label">商品总价</span>
+            <span class="fee-value">¥{{ formatAmount(price) }}</span>
+          </div>
+          <div class="fee-row">
+            <span class="fee-label">运费</span>
+            <span class="fee-value">¥0.00</span>
+          </div>
+          <div class="fee-row fee-row--total">
+            <span class="fee-label">{{ isPendingPayment(list.status) ? '需付款' : '实付款' }}</span>
+            <span class="fee-value">¥{{ formatAmount(price) }}</span>
+          </div>
+        </div>
+
+        <!-- 订单信息 -->
+        <div class="info-divider"></div>
+        <div class="info-meta">
+          <div class="meta-row">
+            <span class="meta-label">下单时间</span>
+            <span class="meta-value">{{ list.createtime_text }}</span>
+          </div>
+          <div class="meta-row" v-if="list.paytime_text && !isPendingPayment(list.status)">
+            <span class="meta-label">付款时间</span>
+            <span class="meta-value">{{ list.paytime_text }}</span>
+          </div>
+        </div>
+
+        <div v-if="!isPendingPayment(list.status)" class="contact-service" @click="contacts">
+          <van-icon name="chat-o" />
+          <span>联系客服</span>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onBeforeMount, onBeforeUnmount, computed } from 'vue'
-import { POST } from '@/services/request'
+import { POST, isCancel } from '@/services/request'
+import { useBack, useCountdown, useAbortController, useBusid } from '@/hooks'
 import { showFailToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '@/stores/user'
-import { copyText } from '@/utils/clipboard'
-import { getOrderStatusText, isPendingPayment } from '@/constants/order'
-import { roundToTwo, formatCurrency } from '@/utils/currency'
+import { getOrderStatusText, getOrderStatusColor, isPendingPayment } from '@/constants/order'
+import { roundToTwo, formatAmount } from '@/utils/currency'
 import { getRouteQueryValue } from '@/utils/params'
-import { formatDateTime } from '@/utils/date'
 import { isBizFail } from '@/utils/result'
-import { getRemainingTime, isPaymentExpired, formatCountdown } from '@/utils/countdown'
-import { useCompletedLocalOrdersStore } from '@/stores/completedLocalOrders'
+import { isPaymentExpired } from '@/utils/countdown'
+import { usePendingPaymentStore } from '@/stores/pendingPayment'
+
+/** 订单详情（后端返回 + 本地待付款订单的字段并集） */
+interface OrderDetail {
+  id: string | number
+  code?: string
+  status?: string | number
+  status_text?: string
+  createtime?: string | number
+  createtime_text?: string
+  amount?: number
+  exfasscode?: string | number
+  paytime_text?: string
+  address?: OrderAddress | null
+  [key: string]: unknown
+}
+
+/** 订单收货地址 */
+interface OrderAddress {
+  consignee?: string
+  mobile?: string
+  address_text?: string
+  address?: string
+  name?: string
+  tel?: string
+}
+
+/** 订单商品行 */
+interface OrderProduct {
+  id: string | number
+  pronum: number
+  price: number
+  total: number
+  ordproduct: {
+    name: string
+    thumbs_text: string
+  }
+}
+
+/** 物流信息 */
+interface ExpressInfo {
+  expName?: string
+  [key: string]: unknown
+}
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const completedLocalOrdersStore = useCompletedLocalOrdersStore()
+const pendingPaymentStore = usePendingPaymentStore()
 
-const login = userStore.userInfo || {}
-const busid = Object.hasOwn(login, 'id') ? login.id : 0
+const busid = useBusid()
 
 const orderid = getRouteQueryValue(route.query, 'orderid', 0)
 
-const list = ref({})
-const prolist = ref([])
+const list = ref<OrderDetail>({} as OrderDetail)
+const prolist = ref<OrderProduct[]>([])
 const contact = ref('')
-const expressData = ref([])
-const countdownText = ref('')
-let countdownTimer = null
+const expressData = ref<ExpressInfo | null>(null)
 
-const formatAmount = amount => formatCurrency(amount)
+const back = useBack()
+/** 组件级取消信号：卸载时自动取消未完成的详情请求 */
+const signal = useAbortController()
 
-const back = () => {
-  router.go(-1)
-}
+/** 订单状态颜色（统一从 constants 取色，与 OrderCard 保持一致） */
+const statusColor = computed(() => getOrderStatusColor(list.value.status))
 
-const copyOrderNo = () => {
-  copyText(list.value.code || '')
-}
+const { countdownMap, startCountdown, stopCountdown } = useCountdown(() => [list.value], isPendingPayment)
+const countdownText = computed(() => countdownMap.value[list.value.id] || '')
 
 const contacts = () => {
   showConfirmDialog({
@@ -151,47 +195,43 @@ const contacts = () => {
     .catch(() => {})
 }
 
-const startCountdown = () => {
-  stopCountdown()
-  const tick = () => {
-    if (isPendingPayment(list.value.status) && !isPaymentExpired(list.value.createtime)) {
-      const remaining = getRemainingTime(list.value.createtime)
-      countdownText.value = formatCountdown(remaining)
-      countdownTimer = setTimeout(tick, 1000)
-    } else {
-      countdownText.value = ''
-    }
-  }
-  tick()
-}
-
-const stopCountdown = () => {
-  if (countdownTimer) {
-    clearTimeout(countdownTimer)
-    countdownTimer = null
-  }
-}
-
 onBeforeMount(async () => {
   const isLocalOrder = String(orderid).startsWith('LOCAL_')
 
   if (isLocalOrder) {
-    const localOrder = completedLocalOrdersStore.orders.find(o => o.id === orderid)
+    const localOrder = pendingPaymentStore.orders.find(o => o.id === orderid)
 
     if (localOrder) {
+      // 兼容新旧两种地址字段名格式
+      const rawAddr = (localOrder.address || {}) as OrderAddress
+      const addr =
+        rawAddr.consignee || rawAddr.name
+          ? {
+              consignee: rawAddr.consignee || rawAddr.name || '',
+              mobile: rawAddr.mobile || rawAddr.tel || '',
+              address_text: rawAddr.address_text || rawAddr.address || ''
+            }
+          : null
+
+      // 本地订单无地址时，fallback 到 userStore 中选择的地址
+      const selected = userStore.selectedAddress
+      const fallbackAddr =
+        !addr && selected?.tel
+          ? { consignee: selected.name, mobile: selected.tel, address_text: selected.address }
+          : null
+
       list.value = {
         ...localOrder,
         status_text: localOrder.status_text || getOrderStatusText(localOrder.status),
-        address: null,
-        paytime_text: formatDateTime()
+        address: addr || fallbackAddr || null
       }
 
       prolist.value = [
         {
           id: localOrder.id,
           pronum: 1,
-          price: localOrder.amount,
-          total: localOrder.amount,
+          price: localOrder.amount ?? 0,
+          total: localOrder.amount ?? 0,
           ordproduct: {
             name: localOrder.name_text || '未知商品',
             thumbs_text: localOrder.thumbs_text || ''
@@ -200,6 +240,7 @@ onBeforeMount(async () => {
       ]
 
       expressData.value = null
+      startCountdown()
     } else {
       showFailToast('本地订单信息不存在')
       setTimeout(() => router.go(-1), 1500)
@@ -218,18 +259,20 @@ const getInfo = async () => {
   try {
     const result = await POST({
       url: '/order/addressinfo',
-      params: { busid: busid, orderid: orderid }
+      params: { busid: busid, orderid: orderid },
+      signal
     })
     if (isBizFail(result) || !result.data) {
       showFailToast(result.msg || '订单信息加载失败')
       return
     }
-    const data = result.data
+    const data = result.data as OrderDetail
     if (data) {
       data.status_text = getOrderStatusText(data.status)
     }
     list.value = data
   } catch (error) {
+    if (isCancel(error)) return
     showFailToast('订单信息加载失败，请稍后重试')
   }
 }
@@ -238,10 +281,12 @@ const expressinfo = async () => {
   try {
     const result = await POST({
       url: '/order/express',
-      params: { busid: busid, orderid: orderid }
+      params: { busid: busid, orderid: orderid },
+      signal
     })
-    expressData.value = isBizFail(result) ? null : result.data
+    expressData.value = isBizFail(result) ? null : (result.data as ExpressInfo)
   } catch (error) {
+    if (isCancel(error)) return
     expressData.value = null
   }
 }
@@ -250,21 +295,24 @@ const getproductinfo = async () => {
   try {
     const result = await POST({
       url: '/order/proinfo',
-      params: { busid: busid, orderid: orderid }
+      params: { busid: busid, orderid: orderid },
+      signal
     })
     if (isBizFail(result) || !result.data) {
       return
     }
-    contact.value = result.data.contact
-    prolist.value = result.data.prolist || []
+    const data = result.data as { contact: string; prolist: OrderProduct[] }
+    contact.value = data.contact
+    prolist.value = data.prolist || []
   } catch (error) {
+    if (isCancel(error)) return
     prolist.value = []
   }
 }
 
 const price = computed(() => {
   let count = 0
-  prolist.value.map(item => {
+  prolist.value.forEach(item => {
     count += roundToTwo(item.total)
   })
   return roundToTwo(count)
@@ -290,77 +338,187 @@ const price = computed(() => {
   padding: var(--spacing-md);
 }
 
-.status-card {
-  background: var(--card-bg);
-  border: 1px solid var(--primary-color);
-  border-radius: var(--radius-lg);
-  padding: 20px 16px;
-  margin-bottom: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.status-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--bg-color);
-}
-
-.status-icon {
-  font-size: 20px;
-  color: var(--primary-color);
-}
-
-.status-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
+/* ========== 倒计时条 ========== */
 .countdown-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  background: #fff5f5;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: #ff464e;
+  padding: 10px 0;
+  font-size: 13px;
+  color: #ff6b00;
+  font-weight: 500;
 }
 
 .countdown-bar .van-icon {
   font-size: 14px;
 }
 
-.express-info {
+.countdown-label {
+  opacity: 0.85;
+}
+
+.countdown-time {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+}
+
+/* ========== 整合信息卡片 ========== */
+.info-card {
+  padding: 16px;
+}
+
+/* 头部：编号 + 状态 */
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--bg-color);
+  margin-bottom: 14px;
+}
+
+.order-no {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.order-status {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 商品行 */
+.product-row {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.product-row + .product-row {
+  border-top: 1px dashed var(--bg-color);
+}
+
+.product-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-color);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.product-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.product-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-price-qty {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pprice {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pqty {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 区段分隔线 */
+.info-divider {
+  height: 1px;
+  background: var(--bg-color);
+  margin: 12px 0;
+}
+
+/* 物流信息 */
+.info-express {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.info-express .van-icon {
+  font-size: 14px;
+}
+
+/* 费用明细 */
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.fee-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.fee-value {
   font-size: 13px;
   color: var(--text-primary);
 }
 
-.express-item {
-  display: flex;
-  align-items: center;
-  margin-top: 8px;
+.fee-row--total {
+  padding-top: 8px;
 }
 
-.express-item:first-child {
-  margin-top: 0;
-}
-
-.express-item .van-icon {
-  margin-right: 8px;
+.fee-row--total .fee-label {
   font-size: 14px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.no-express {
+.fee-row--total .fee-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+/* 订单元数据 */
+.info-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.meta-label {
   font-size: 13px;
   color: var(--text-secondary);
-  text-align: center;
-  padding: 8px 0;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 .card-item {
@@ -410,18 +568,6 @@ const price = computed(() => {
   line-height: 1.4;
 }
 
-.card-title {
-  padding: 14px 16px 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-:deep(.van-card) {
-  background: transparent;
-  padding: 8px 16px;
-}
-
 .contact-service {
   display: flex;
   align-items: center;
@@ -437,54 +583,5 @@ const price = computed(() => {
 
 .contact-service:active {
   background: var(--bg-color);
-}
-
-.total-price :deep(.van-cell__value) {
-  color: var(--primary-color);
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.order-meta {
-  padding: 0 16px 12px;
-}
-
-.meta-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--bg-color);
-}
-
-.meta-item:last-child {
-  border-bottom: none;
-}
-
-.label {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.value {
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
-.value-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.copy-icon {
-  color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.copy-icon:active {
-  color: var(--primary-color);
 }
 </style>

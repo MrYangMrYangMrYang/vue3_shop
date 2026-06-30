@@ -3,9 +3,13 @@
     <!-- 路由切换动画（按方向）+ 异步路由 fallback + 缓存（meta.keepAlive 控制） -->
     <transition :name="transitionName" mode="out-in">
       <suspense>
-        <keep-alive :include="cachedViews">
-          <component :is="Component" />
-        </keep-alive>
+        <main id="main-content">
+          <ErrorBoundary>
+            <keep-alive :include="cachedViews">
+              <component :is="Component" />
+            </keep-alive>
+          </ErrorBoundary>
+        </main>
         <template #fallback>
           <div class="page-loading">
             <van-loading type="spinner" color="#FF464E" />
@@ -19,6 +23,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
 
 const router = useRouter()
 

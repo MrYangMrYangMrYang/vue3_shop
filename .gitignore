@@ -17,6 +17,7 @@ dist/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+.trae/
 
 # 操作系统
 .DS_Store

@@ -12,7 +12,7 @@
   <van-popup v-model:show="visible" position="bottom" round closeable teleport="body" class="sku-popup">
     <div class="sku-panel">
       <div class="sku-header">
-        <img v-lazy="product.thumbs_text" class="sku-img" />
+        <img v-lazy="product.thumbs_text" class="sku-img" :alt="product.name || '商品图片'" />
         <div class="sku-meta">
           <div class="sku-price">¥{{ product.price }}</div>
           <div class="sku-stock">库存: {{ product.stock }} {{ product.unit?.name || '' }}</div>
@@ -63,8 +63,9 @@ interface ProductInfo {
   price?: number | string
   stock?: number | string
   unit?: { name?: string }
+  name?: string
   specs?: SpecGroup[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface SkuConfirmPayload {

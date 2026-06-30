@@ -22,4 +22,11 @@ const toFen = (value: unknown): number => Math.round((toNumber(value) + Number.E
  */
 const formatCurrency = (value: unknown, fractionDigits: number = 2): string => roundToTwo(value).toFixed(fractionDigits)
 
-export { toNumber, roundToTwo, toFen, formatCurrency }
+/**
+ * 模板金额格式化（兜底 0），用于组件中可选值金额的展示
+ * @param amount 金额（可能为 undefined）
+ * @returns 格式化后的金额字符串
+ */
+const formatAmount = (amount: number | undefined): string => formatCurrency(amount ?? 0)
+
+export { toNumber, roundToTwo, toFen, formatCurrency, formatAmount }

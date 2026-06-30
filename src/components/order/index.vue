@@ -67,7 +67,7 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onBeforeMount, onBeforeUnmount, nextTick } from 'vue'
-import { POST } from '@/services/request'
+import { POST, isCancel } from '@/services/request'
 import {
   showToast,
   showSuccessToast,
@@ -77,14 +77,12 @@ import {
   showConfirmDialog,
   showDialog
 } from 'vant'
-import { useUserStore } from '@/stores/user'
 import { usePendingPaymentStore } from '@/stores/pendingPayment'
-import { useCompletedLocalOrdersStore } from '@/stores/completedLocalOrders'
 import { ORDER_STATUS, getOrderStatusText, getOrderStatusClass, isPendingPayment } from '@/constants/order'
 import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
 import { isPaymentExpired } from '@/utils/countdown'
-import { useCountdown, useBack } from '@/hooks'
+import { useCountdown, useBack, useAbortController, useBusid } from '@/hooks'
 import OrderCard from './OrderCard.vue'
 
 /** 订单列表项（后端订单 + 本地待支付/已完成订单的字段并集） */
@@ -107,7 +105,7 @@ interface OrderListItem {
 /** 通用操作执行器参数 */
 interface ExecuteActionOptions {
   url: string
-  params: Record<string, any>
+  params: Record<string, unknown>
   orderid: string | number
   confirmTitle: string
   confirmMessage: string
@@ -116,16 +114,24 @@ interface ExecuteActionOptions {
   onSuccess?: () => void
 }
 
+/** 订单列表视图状态缓存 */
+interface OrderListCache {
+  active?: string | number
+  page?: number
+  finished?: boolean
+  list?: OrderListItem[]
+  scrollTop?: number
+}
+
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 const pendingPaymentStore = usePendingPaymentStore()
-const completedLocalOrdersStore = useCompletedLocalOrdersStore()
 
 const back = useBack()
+/** 组件级取消信号：卸载时自动取消未完成的列表请求 */
+const signal = useAbortController()
 
-const login = userStore.userInfo || {}
-const busid = Object.hasOwn(login, 'id') ? login.id : 0
+const busid = useBusid()
 
 const active = ref('0')
 const list = ref<OrderListItem[]>([])
@@ -149,7 +155,7 @@ const finishedText = computed(() => (list.value.length === 0 ? '' : '没有更�
 
 /** 恢复列表状态缓存 */
 const restoreOrderListState = () => {
-  const cached = getCache(ORDER_LIST_CACHE_KEY)
+  const cached = getCache<OrderListCache>(ORDER_LIST_CACHE_KEY)
   if (!cached || typeof cached !== 'object') return false
 
   active.value = String(cached.active ?? '0')
@@ -209,7 +215,8 @@ const OrderData = async () => {
         busid: busid,
         status: active.value,
         page: page.value
-      }
+      },
+      signal
     })
 
     if (isBizFail(result) || !Array.isArray(result.data) || result.data.length <= 0) {
@@ -221,19 +228,11 @@ const OrderData = async () => {
           const localPendingOrders = pendingPaymentStore.orders.map(order => ({
             ...order,
             status_text: '待支付',
-            status_class: 'status-pending-payment'
+            status_class: getOrderStatusClass(ORDER_STATUS.PENDING_PAYMENT)
           }))
           list.value = list.value.concat(localPendingOrders)
           startCountdown()
         }
-      }
-
-      const isAllTab = String(active.value) === String(ORDER_STATUS.ALL)
-      const completedOrdersForTab = isAllTab
-        ? completedLocalOrdersStore.getAllOrders()
-        : completedLocalOrdersStore.getOrderByStatus(active.value)
-      if (completedOrdersForTab.length > 0 && page.value === 1) {
-        list.value = list.value.concat(completedOrdersForTab)
       }
 
       finished.value = true
@@ -245,33 +244,26 @@ const OrderData = async () => {
       }))
 
       if (pendingPaymentStore.orders.length > 0 && page.value === 1) {
+        // 始终排除已在本地待支付列表中的服务端订单（避免同一订单出现在两个 tab）
+        // 用 String() 归一化 ID 类型：后端可能返回 number，本地存储可能是 string
+        const localOrderIds = new Set(pendingPaymentStore.orders.map(o => String(o.id)))
+        const processedDataFiltered = processedData.filter(item => !localOrderIds.has(String(item.id)))
+
         const isAllOrPending =
           String(active.value) === String(ORDER_STATUS.ALL) ||
           String(active.value) === String(ORDER_STATUS.PENDING_PAYMENT)
         if (isAllOrPending) {
-          const localOrderIds = new Set(pendingPaymentStore.orders.map(o => o.id))
-          const serverOrdersWithoutLocal = processedData.filter(item => !localOrderIds.has(item.id))
           const localPendingOrders = pendingPaymentStore.orders.map(order => ({
             ...order,
             status_text: '待支付',
-            status_class: 'status-pending-payment'
+            status_class: getOrderStatusClass(ORDER_STATUS.PENDING_PAYMENT)
           }))
-          list.value = list.value.concat(localPendingOrders, serverOrdersWithoutLocal)
+          list.value = list.value.concat(localPendingOrders, processedDataFiltered)
         } else {
-          list.value = list.value.concat(processedData)
+          list.value = list.value.concat(processedDataFiltered)
         }
       } else {
         list.value = list.value.concat(processedData)
-      }
-
-      const isAllTabForCompleted = String(active.value) === String(ORDER_STATUS.ALL)
-      const completedOrdersForTab = isAllTabForCompleted
-        ? completedLocalOrdersStore.getAllOrders()
-        : completedLocalOrdersStore.getOrderByStatus(active.value)
-      if (completedOrdersForTab.length > 0 && page.value === 1) {
-        const completedOrderIds = new Set(completedOrdersForTab.map(o => o.id))
-        const filteredList = list.value.filter(item => !completedOrderIds.has(item.id))
-        list.value = filteredList.concat(completedOrdersForTab)
       }
 
       page.value++
@@ -279,6 +271,8 @@ const OrderData = async () => {
       startCountdown()
     }
   } catch (error) {
+    // 组件卸载导致的取消，静默退出，不触发 finished 避免误标列表结束
+    if (isCancel(error)) return
     finished.value = true
   } finally {
     loading.value = false
@@ -340,85 +334,39 @@ const payOrder = (orderid: string | number): void => {
     confirmButtonColor: '#FF464E'
   })
     .then(async () => {
-      const isLocalOrder = String(orderid).startsWith('LOCAL_')
-
       setOrderLoading(orderid, true)
 
-      if (isLocalOrder) {
+      if (String(orderid).startsWith('LOCAL_')) {
         try {
-          showLoadingToast({
-            message: '支付处理中...',
-            forbidClick: true,
-            duration: 0
-          })
-
-          await new Promise(resolve => setTimeout(resolve, 2000))
-
+          showLoadingToast({ message: '支付中...', forbidClick: true, duration: 0 })
+          const result = await pendingPaymentStore.placeOrder(orderid)
           closeToast()
 
-          const orderIndex = list.value.findIndex(o => o.id === orderid)
-          if (orderIndex !== -1) {
-            list.value[orderIndex].status = ORDER_STATUS.PENDING_SHIP
-            list.value[orderIndex].status_text = '待发货'
-            list.value[orderIndex].status_class = getOrderStatusClass(ORDER_STATUS.PENDING_SHIP)
-
-            completedLocalOrdersStore.addCompletedOrder(list.value[orderIndex])
+          if (result.success) {
+            showDialog({
+              title: '🎉 支付成功',
+              message: '您的订单已支付完成！商家将尽快为您发货。',
+              confirmButtonText: '查看订单',
+              confirmButtonColor: '#FF464E'
+            }).then(() => {
+              active.value = ORDER_STATUS.PENDING_SHIP
+              TabChange()
+            })
+          } else {
+            showFailToast(result.msg || '支付失败，请稍后重试')
           }
-
-          pendingPaymentStore.removePendingOrder(orderid)
-
-          showDialog({
-            title: '🎉 支付成功',
-            message: '您的订单已支付完成！商家将尽快为您发货。',
-            confirmButtonText: '查看订单',
-            confirmButtonColor: '#FF464E'
-          }).then(() => {
-            active.value = ORDER_STATUS.PENDING_SHIP
-            TabChange()
-          })
-        } catch (error) {
+        } catch (err) {
           closeToast()
-          showFailToast('支付失败：' + (error.message || '未知错误'))
+          showFailToast('支付失败：' + (err instanceof Error ? err.message : '未知错误'))
         } finally {
           setOrderLoading(orderid, false)
         }
         return
       }
 
-      try {
-        showLoadingToast({
-          message: '支付中...',
-          forbidClick: true,
-          duration: 0
-        })
-
-        const result = await POST({
-          url: '/order/pay',
-          params: { busid, orderid }
-        })
-
-        closeToast()
-
-        if (isBizFail(result)) {
-          showFailToast(result.msg || '支付失败')
-          return
-        }
-
-        pendingPaymentStore.removePendingOrder(orderid)
-        showDialog({
-          title: '🎉 支付成功',
-          message: '您的订单已支付完成！商家将尽快为您发货。',
-          confirmButtonText: '查看订单',
-          confirmButtonColor: '#FF464E'
-        }).then(() => {
-          refresh()
-        })
-      } catch (error) {
-        closeToast()
-        showFailToast('支付失败：' + (error.message || '网络异常'))
-      } finally {
-        setOrderLoading(orderid, false)
-      }
+      // 非本地订单兜底（新方案下待付款列表仅含 LOCAL_ 订单，不应走到此分支）
+      setOrderLoading(orderid, false)
+      showFailToast('订单状态异常')
     })
     .catch(error => {
       if (isLoadingOrder(orderid)) {
@@ -444,10 +392,15 @@ const cancelOrder = (orderid: string | number): void => {
       confirmButtonColor: '#ff464e'
     })
       .then(() => {
+        const localOrder = pendingPaymentStore.getPendingOrder(orderid)
         disappearingOrderIds.value.add(orderid)
 
         setTimeout(() => {
           pendingPaymentStore.removePendingOrder(orderid)
+          // 立即购买模式的临时购物车记录需清理
+          if (localOrder?.action === 'buy' && localOrder?.cartids) {
+            POST({ url: '/cart/delbuy', params: { cartid: localOrder.cartids, busid } }).catch(() => {})
+          }
           list.value = list.value.filter(o => o.id !== orderid)
           disappearingOrderIds.value.delete(orderid)
           showToast('订单已取消')
@@ -535,7 +488,7 @@ onBeforeMount(async () => {
   if (restored) {
     await nextTick()
     startCountdown()
-    const cached = getCache(ORDER_LIST_CACHE_KEY)
+    const cached = getCache<OrderListCache>(ORDER_LIST_CACHE_KEY)
     const scrollTop = Number(cached?.scrollTop || 0)
     window.scrollTo(0, scrollTop)
     return
@@ -586,9 +539,5 @@ onBeforeUnmount(() => {
   width: 160px;
   background: var(--primary-gradient);
   border: none;
-}
-
-.order-empty {
-  padding: 48px 0 24px;
 }
 </style>

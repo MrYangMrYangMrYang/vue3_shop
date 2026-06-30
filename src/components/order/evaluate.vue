@@ -42,17 +42,14 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref } from 'vue'
 import { POST } from '@/services/request'
 import { showSuccessToast, showFailToast } from 'vant'
-import { useUserStore } from '@/stores/user'
 import { getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
-import { useBack } from '@/hooks'
+import { useBack, useBusid } from '@/hooks'
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 
-const login = userStore.userInfo || {}
-const busid = Object.hasOwn(login, 'id') ? login.id : 0
+const busid = useBusid()
 const orderid = getRouteQueryValue(route.query, 'orderid', 0)
 const values = ref('')
 
