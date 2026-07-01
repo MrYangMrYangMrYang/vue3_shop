@@ -50,9 +50,6 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 
 ## 📸 项目截图
 
-> 💡 将截图放入 `docs/screenshots/` 目录后，取消注释下方表格即可展示。
-
-<!--
 <table>
   <tr>
     <td width="33%" align="center"><img src="docs/screenshots/home.png" alt="首页"><br>首页</td>
@@ -65,7 +62,6 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
     <td width="33%" align="center"><img src="docs/screenshots/business.png" alt="个人中心"><br>个人中心</td>
   </tr>
 </table>
--->
 
 ---
 
@@ -124,6 +120,7 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 | [Husky](https://typicode.github.io/husky/)                | ^9.1.7  | Git Hooks                    |
 | [lint-staged](https://github.com/lint-staged/lint-staged) | ^16.4.0 | 暂存区代码检查               |
 | [@commitlint](https://commitlint.js.org/)                 | 21.2    | 提交信息规范（Conventional） |
+| [Playwright](https://playwright.dev/)                     | latest  | E2E 端到端测试               |
 
 ---
 
@@ -159,13 +156,16 @@ npm run preview
 ### 工程化脚本
 
 ```bash
-npm run type-check     # TypeScript 类型检查（vue-tsc --noEmit）
-npm run lint           # ESLint 自动修复
-npm run lint:check     # ESLint 仅检查（CI 用）
-npm run format         # Prettier 格式化
-npm run test           # 单元测试（单次运行）
-npm run test:watch     # 单元测试（监听模式）
-npm run test:coverage  # 单元测试 + 覆盖率报告
+npm run type-check      # TypeScript 类型检查（vue-tsc --noEmit）
+npm run lint            # ESLint 自动修复
+npm run lint:check      # ESLint 仅检查（CI 用）
+npm run format          # Prettier 格式化
+npm run test            # 单元测试（单次运行）
+npm run test:watch      # 单元测试（监听模式）
+npm run test:coverage   # 单元测试 + 覆盖率报告
+npm run test:e2e        # E2E 测试（Playwright）
+npm run test:e2e:ui     # E2E 测试（交互式 UI）
+npm run test:e2e:report # E2E 测试报告
 ```
 
 ---
@@ -176,6 +176,8 @@ npm run test:coverage  # 单元测试 + 覆盖率报告
 vue_shop/
 ├── .github/workflows/               # GitHub Actions CI（lint → type-check → test → build）
 ├── .husky/                          # Git Hooks（pre-commit + commit-msg）
+├── docs/screenshots/                # README 截图
+├── e2e/                             # E2E 端到端测试（Playwright + Mock API）
 ├── public/                          # 静态资源（PWA manifest + Service Worker）
 ├── src/
 │   ├── assets/styles/               # 全局样式（common.css）
@@ -216,6 +218,7 @@ vue_shop/
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 配置
 ├── vite.config.js / vitest.config.js   # 构建 & 测试配置
 ├── commitlint.config.js / components.d.ts  # 提交规范 / 组件自动注册声明
+├── Dockerfile / .dockerignore / nginx.conf  # Docker 部署
 └── package.json
 ```
 
@@ -298,6 +301,25 @@ npm run type-check   # vue-tsc --noEmit，0 errors
 npm run test              # 单次运行
 npm run test:watch        # 监听模式
 npm run test:coverage     # 覆盖率报告
+```
+
+### E2E 端到端测试
+
+基于 Playwright + Chromium（移动端视口），覆盖**首页浏览 / 登录注册 / 商品列表 / 404 兜底** 4 个关键场景共 **19 个用例**。API 调用全部通过 `page.route()` 内置 Mock 拦截，不依赖后端。
+
+| 测试套件     | 用例数 | 覆盖场景                                        |
+| ------------ | ------ | ----------------------------------------------- |
+| 首页（游客） | 7      | 标题 / Tab 导航 / 轮播 / 分类 / 推荐 / 登录拦截 |
+| 登录页       | 3      | 表单渲染 / 注册入口 / 跳转                      |
+| 注册页       | 3      | 标题 / 验证码 / 提交按钮                        |
+| 商品列表     | 5      | 标题 / 导航栏 / Tab / 列表渲染 / 返回           |
+| 404 页面     | 1      | 兜底提示文案                                    |
+
+```bash
+npm run test:e2e           # 命令行运行
+npm run test:e2e:ui        # 交互式 UI 模式
+npm run test:e2e:report    # 查看 HTML 报告
+npx tsx e2e/screenshots.ts # 重新生成 README 截图
 ```
 
 ### 代码规范
@@ -569,21 +591,17 @@ server {
 
 ### Docker 部署
 
-> 💡 以下为参考示例，仓库中暂未包含实际 Dockerfile，可根据需要自行创建。
+项目已包含 [`Dockerfile`](Dockerfile) + [`nginx.conf`](nginx.conf)，可直接构建运行：
 
-```dockerfile
-FROM node:18-alpine as build-stage
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+```bash
+# 构建镜像
+docker build -t vue-shop .
 
-FROM nginx:alpine
-COPY --from=build-stage /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# 启动容器
+docker run -d -p 80:80 --name vue-shop vue-shop
 ```
+
+构建流程：`npm ci → type-check → test → build → nginx serve`，健康检查端点 `/`。
 
 ---
 

@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.husky
+*.md
+!README.md
+.vscode
+.trae
+.env.development
+.env.example
+components.d.ts
+stats.html
