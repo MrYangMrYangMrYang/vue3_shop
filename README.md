@@ -99,16 +99,17 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 
 ### 核心框架
 
-| 技术                                               | 版本    | 用途                     |
-| -------------------------------------------------- | ------- | ------------------------ |
-| [Vue.js](https://vuejs.org/)                       | ^3.2.47 | 渐进式 JavaScript 框架   |
-| [Vite](https://vitejs.dev/)                        | ^4.3.9  | 下一代前端构建工具       |
-| [Vue Router](https://router.vuejs.org/)            | ^4.2.2  | 官方路由管理器           |
-| [Pinia](https://pinia.vuejs.org/)                  | ^3.0.4  | Vue 状态管理库           |
-| [Vant](https://vant-ui.github.io/)                 | ^4.6.0  | 移动端 UI 组件库         |
-| [Axios](https://axios-http.com/)                   | ^1.4.0  | HTTP 客户端              |
-| [DOMPurify](https://github.com/cure53/DOMPurify)   | ^3.4.11 | XSS 净化（富文本防注入） |
-| [@vant/area-data](https://github.com/vant-ui/vant) | ^1.4.1  | 省市区数据               |
+| 技术                                                     | 版本    | 用途                     |
+| -------------------------------------------------------- | ------- | ------------------------ |
+| [Vue.js](https://vuejs.org/)                             | 3.5     | 渐进式 JavaScript 框架   |
+| [Vite](https://vitejs.dev/)                              | 4.5     | 下一代前端构建工具       |
+| [Vue Router](https://router.vuejs.org/)                  | 4.6     | 官方路由管理器           |
+| [Pinia](https://pinia.vuejs.org/)                        | ^3.0.4  | Vue 状态管理库           |
+| [Vant](https://vant-ui.github.io/)                       | 4.10    | 移动端 UI 组件库         |
+| [Axios](https://axios-http.com/)                         | 1.18    | HTTP 客户端              |
+| [web-vitals](https://github.com/GoogleChrome/web-vitals) | ^5.3.0  | Core Web Vitals 性能监控 |
+| [DOMPurify](https://github.com/cure53/DOMPurify)         | ^3.4.11 | XSS 净化（富文本防注入） |
+| [@vant/area-data](https://github.com/vant-ui/vant)       | ^1.4.1  | 省市区数据               |
 
 ### 工程化工具链
 
@@ -119,10 +120,10 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 | [Vitest](https://vitest.dev/)                             | ^4.1.9  | 单元测试框架                 |
 | [@vitest/coverage-v8](https://vitest.dev/)                | ^4.1.9  | 测试覆盖率（V8 provider）    |
 | [ESLint](https://eslint.org/)                             | ^8.57.1 | 代码规范检查                 |
-| [Prettier](https://prettier.io/)                          | ^3.9.1  | 代码格式化                   |
+| [Prettier](https://prettier.io/)                          | 3.9     | 代码格式化                   |
 | [Husky](https://typicode.github.io/husky/)                | ^9.1.7  | Git Hooks                    |
 | [lint-staged](https://github.com/lint-staged/lint-staged) | ^16.4.0 | 暂存区代码检查               |
-| [@commitlint](https://commitlint.js.org/)                 | ^21.1.0 | 提交信息规范（Conventional） |
+| [@commitlint](https://commitlint.js.org/)                 | 21.2    | 提交信息规范（Conventional） |
 
 ---
 
@@ -174,12 +175,14 @@ npm run test:coverage  # 单元测试 + 覆盖率报告
 ```
 vue_shop/
 ├── .github/workflows/               # GitHub Actions CI（lint → type-check → test → build）
-├── public/                          # 静态资源
+├── .husky/                          # Git Hooks（pre-commit + commit-msg）
+├── public/                          # 静态资源（PWA manifest + Service Worker）
 ├── src/
-│   ├── assets/styles/               # 全局样式
-│   ├── components/                  # 页面组件
+│   ├── assets/styles/               # 全局样式（common.css）
+│   ├── components/                  # 页面组件（24 个 .vue 文件）
+│   │   ├── __tests__/               # 组件单元测试（4 个 .test.ts，14 用例）
 │   │   ├── business/                # 用户中心（资料、邮箱、地址管理）
-│   │   ├── cart/                    # 购物车（列表、结算）
+│   │   ├── cart/                    # 购物车（列表、结算、骨架屏）
 │   │   ├── common/                  # 公共组件（底部导航、网络错误页、错误边界）
 │   │   ├── order/                   # 订单（列表、详情、物流、评价）
 │   │   ├── product/                 # 商品（列表、详情、SKU 选择器）
@@ -187,21 +190,26 @@ vue_shop/
 │   │   ├── login.vue                # 登录页（lang="ts"）
 │   │   ├── register.vue             # 注册页（lang="ts"）
 │   │   └── NotFound.vue             # 404 兜底页
-│   ├── constants/order.ts           # 常量定义（订单状态枚举）
-│   ├── hooks/                       # Composable（useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit，.ts）
+│   ├── constants/order.ts           # 常量定义（订单状态枚举 + 辅助函数）
+│   ├── hooks/                       # Composable（7 个，含 barrel export）
+│   │   └── __tests__/               # Hooks 单元测试（4 个 .test.ts，36 用例）
 │   ├── routers/index.ts             # 路由配置与守卫（含 RouteMeta 类型扩展）
-│   ├── services/request.ts          # 请求层（Axios 独立实例、拦截器、去重、重试）
-│   ├── stores/                      # Pinia 状态（user / cart / pendingPayment，.ts）
-│   ├── types/                       # 类型声明扩展（vant.d.ts）
-│   ├── utils/                       # 工具函数（11 个 .ts：cache / currency / date / debounce / throttle / validate / mask 等）
+│   ├── services/                    # 请求层（Axios 实例、拦截器、去重、重试）
+│   │   ├── request.ts
+│   │   └── __tests__/               # request 单元测试（2 个 .test.ts，41 用例）
+│   ├── stores/                      # Pinia 状态（user / cart / pendingPayment）
+│   │   └── __tests__/               # stores 单元测试（3 个 .test.ts，53 用例）
+│   ├── types/                       # 类型声明（vant.d.ts / shims.d.ts）
+│   ├── utils/                       # 工具函数（11 个 .ts：cache / currency / date / debounce / throttle / validate / mask / clipboard / countdown / params / result）
 │   │   └── __tests__/               # 单元测试（11 个 .test.ts，97 用例）
-│   ├── App.vue                      # 根组件（suspense + 路由切换动画）
+│   ├── App.vue                      # 根组件（Suspense + keep-alive + 路由切换动画）
 │   ├── main.ts                      # 应用入口（全局错误处理 + Web Vitals 上报）
 │   └── env.d.ts                     # Vite 环境变量类型声明
-├── .eslintrc.cjs / .prettierrc      # 代码规范配置
+├── .editorconfig / .eslintrc.cjs / .prettierrc / .eslintignore / .prettierignore  # 代码规范配置
 ├── .env.development / .env.production / .env.example  # 环境变量
-├── tsconfig.json                    # TypeScript 配置（渐进式迁移）
-├── vite.config.js                   # Vite 配置
+├── tsconfig.json / tsconfig.node.json  # TypeScript 配置
+├── vite.config.js / vitest.config.js   # 构建 & 测试配置
+├── commitlint.config.js / components.d.ts  # 提交规范 / 组件自动注册声明
 └── package.json
 ```
 
@@ -251,7 +259,7 @@ vue_shop/
 
 ### TypeScript 渐进式迁移
 
-采用 `allowJs` 策略实现 JS→TS 平滑过渡，非组件层 100% TS 化，核心业务组件已迁移至 `<script setup lang="ts">`。已开启 `strictNullChecks` + `noImplicitAny` 核心类型检查。
+采用 `allowJs` 策略实现 JS→TS 平滑过渡，非组件层 100% TS 化，核心业务组件已迁移至 `<script setup lang="ts">`。已开启 `strict: true` 完整严格模式（含 strictNullChecks / noImplicitAny / strictFunctionTypes / strictPropertyInitialization 等全部 8 项严格检查）。
 
 | 层级      | 文件数 | 说明                                                                                                                                                                                            |
 | --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -456,11 +464,31 @@ VITE_IMAGE_DOMAIN=www.fastadmin.com  # 后端图片域名（响应数据路径�
 ```javascript
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
+  const isProd = mode === 'production'
   return {
     plugins: [
       vue(),
-      Components({ resolvers: [VantResolver()] }) // Vant 按需导入
-    ],
+      Components({ resolvers: [VantResolver()] }), // Vant 按需导入
+      isProd &&
+        compression({
+          // 生产环境：Brotli + Gzip 预压缩
+          algorithms: ['brotliCompress', 'gzip'],
+          exclude: [/\.html$/, /\.map$/],
+          deleteOriginalAssets: false,
+          threshold: 1024
+        }),
+      isProd &&
+        visualizer({
+          // 生产环境：产物分析
+          filename: 'dist/stats.html',
+          gzipSize: true,
+          brotliSize: true,
+          open: false
+        })
+    ].filter(Boolean),
+    define: {
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false' // 关闭生产环境水合警告
+    },
     build: {
       rollupOptions: {
         output: {
@@ -534,6 +562,8 @@ server {
 ```
 
 ### Docker 部署
+
+> 💡 以下为参考示例，仓库中暂未包含实际 Dockerfile，可根据需要自行创建。
 
 ```dockerfile
 FROM node:18-alpine as build-stage
