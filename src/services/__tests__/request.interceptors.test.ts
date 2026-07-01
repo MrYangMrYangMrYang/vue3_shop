@@ -18,7 +18,7 @@ vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ clearUserInfo: mocks.clearUserInfo })
 }))
 
-vi.mock('@/routers', () => ({
+vi.mock('@/router', () => ({
   default: {
     currentRoute: { value: { path: '/home', fullPath: '/home' } },
     replace: mocks.routerReplace
@@ -115,7 +115,7 @@ describe('响应错误拦截器', () => {
 
   it('401 且已在登录页时不重复跳转', async () => {
     // 临时修改 mock 路由的当前路径
-    const routersModule = await import('@/routers')
+    const routersModule = await import('@/router')
     const router = (routersModule as { default: { currentRoute: { value: { path: string } } } }).default
     const originalPath = router.currentRoute.value.path
     router.currentRoute.value.path = '/login'

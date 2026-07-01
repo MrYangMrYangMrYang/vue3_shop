@@ -115,7 +115,7 @@ function getAuthToken(): string {
  * 动态导入 user store 与 router，规避 request ↔ store ↔ router 的循环依赖
  */
 async function handleUnauthorized(): Promise<void> {
-  const [{ useUserStore }, { default: router }] = await Promise.all([import('@/stores/user'), import('@/routers')])
+  const [{ useUserStore }, { default: router }] = await Promise.all([import('@/stores/user'), import('@/router')])
   useUserStore().clearUserInfo()
   const current = router.currentRoute.value
   if (current.path !== '/login') {

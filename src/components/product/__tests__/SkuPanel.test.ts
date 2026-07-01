@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SkuPanel from '../product/SkuPanel.vue'
+import SkuPanel from '../SkuPanel.vue'
 
 /** Vant 组件简易 stub */
 const stubs = {

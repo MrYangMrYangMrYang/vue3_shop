@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
-import ErrorBoundary from '../common/ErrorBoundary.vue'
+import ErrorBoundary from '../ErrorBoundary.vue'
 
 /** 共享 stubs（与 NetworkError 测试保持一致） */
 const stubs = {

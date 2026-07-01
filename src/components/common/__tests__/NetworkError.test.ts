@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import NetworkError from '../common/NetworkError.vue'
+import NetworkError from '../NetworkError.vue'
 
 /** 共享 stubs */
 const stubs = {

@@ -179,21 +179,27 @@ vue_shop/
 ├── public/                          # 静态资源（PWA manifest + Service Worker）
 ├── src/
 │   ├── assets/styles/               # 全局样式（common.css）
-│   ├── components/                  # 页面组件（24 个 .vue 文件）
-│   │   ├── __tests__/               # 组件单元测试（4 个 .test.ts，14 用例）
-│   │   ├── business/                # 用户中心（资料、邮箱、地址管理）
-│   │   ├── cart/                    # 购物车（列表、结算、骨架屏）
-│   │   ├── common/                  # 公共组件（底部导航、网络错误页、错误边界）
+│   ├── views/                       # 路由页面（18 个 .vue 文件）
+│   │   ├── __tests__/               # 页面组件测试
+│   │   ├── user/                    # 用户中心（资料、邮箱、地址管理）
+│   │   ├── cart/                    # 购物车（列表、结算）
 │   │   ├── order/                   # 订单（列表、详情、物流、评价）
-│   │   ├── product/                 # 商品（列表、详情、SKU 选择器）
+│   │   ├── product/                 # 商品（列表、详情）
 │   │   ├── home.vue                 # 首页
 │   │   ├── login.vue                # 登录页（lang="ts"）
 │   │   ├── register.vue             # 注册页（lang="ts"）
 │   │   └── NotFound.vue             # 404 兜底页
+│   ├── components/                  # 可复用组件（6 个 .vue 文件）
+│   │   ├── common/                  # 底部导航 / 网络错误页 / 错误边界
+│   │   │   └── __tests__/           # 公共组件测试
+│   │   ├── product/                 # SkuPanel
+│   │   │   └── __tests__/
+│   │   ├── order/                   # OrderCard
+│   │   └── cart/                    # ConfirmSkeleton
 │   ├── constants/order.ts           # 常量定义（订单状态枚举 + 辅助函数）
 │   ├── hooks/                       # Composable（7 个，含 barrel export）
 │   │   └── __tests__/               # Hooks 单元测试（4 个 .test.ts，36 用例）
-│   ├── routers/index.ts             # 路由配置与守卫（含 RouteMeta 类型扩展）
+│   ├── router/index.ts              # 路由配置与守卫（含 RouteMeta 类型扩展）
 │   ├── services/                    # 请求层（Axios 实例、拦截器、去重、重试）
 │   │   ├── request.ts
 │   │   └── __tests__/               # request 单元测试（2 个 .test.ts，41 用例）
@@ -268,7 +274,7 @@ vue_shop/
 | hooks     | 7      | useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit                                                                                           |
 | services  | 1      | request.ts（ApiResult / RequestOptions 接口 + 拦截器）                                                                                                                                          |
 | constants | 1      | order.ts（ORDER_STATUS 枚举）                                                                                                                                                                   |
-| routers   | 1      | index.ts（含 RouteMeta 模块增强）                                                                                                                                                               |
+| router    | 1      | index.ts（含 RouteMeta 模块增强）                                                                                                                                                               |
 | 入口      | 2      | main.ts / env.d.ts（Vite 环境变量类型）                                                                                                                                                         |
 | 组件      | 15     | 全部 `<script setup lang="ts">`：home / login / register / list / info / SkuPanel / cart-index / confirm / ConfirmSkeleton / order-index / info / OrderCard / express / ErrorBoundary / profile |
 
@@ -402,7 +408,7 @@ dist/assets/
 - 登录状态持久化（localStorage）
 - 未登录路由拦截（全局守卫 + `checkLogin` 校验）
 
-**关键文件**: [`login.vue`](src/components/login.vue) · [`user.ts`](src/stores/user.ts) · [`index.ts`](src/routers/index.ts)
+**关键文件**: [`login.vue`](src/views/login.vue) · [`user.ts`](src/stores/user.ts) · [`index.ts`](src/router/index.ts)
 
 ### 地址管理
 
@@ -410,7 +416,7 @@ dist/assets/
 - 省市区三级联动（@vant/area-data）
 - 下单场景地址选择（带返回参数）
 
-**关键文件**: [`address/`](src/components/business/address/) · [`user.ts`](src/stores/user.ts)
+**关键文件**: [`address/`](src/views/user/address/) · [`user.ts`](src/stores/user.ts)
 
 ### 商品浏览
 
@@ -419,7 +425,7 @@ dist/assets/
 - 商品列表分页加载 + keep-alive 缓存恢复
 - 商品详情（图片预览、加入购物车、立即购买）
 
-**关键文件**: [`home.vue`](src/components/home.vue) · [`list.vue`](src/components/product/list.vue) · [`info.vue`](src/components/product/info.vue) · [`cache.ts`](src/utils/cache.ts) · [`debounce.ts`](src/utils/debounce.ts)
+**关键文件**: [`home.vue`](src/views/home.vue) · [`list.vue`](src/views/product/list.vue) · [`info.vue`](src/views/product/info.vue) · [`cache.ts`](src/utils/cache.ts) · [`debounce.ts`](src/utils/debounce.ts)
 
 ### 购物车
 
@@ -427,7 +433,7 @@ dist/assets/
 - 实时总价计算、批量结算跳转
 - 待付款商品自动隐藏，`useCartBadge` 统一计算底部导航 Badge（后端全量 - 待付款占用）
 
-**关键文件**: [`cart/index.vue`](src/components/cart/index.vue) · [`cart/confirm.vue`](src/components/cart/confirm.vue) · [`cart.ts`](src/stores/cart.ts) · [`useCartBadge.ts`](src/hooks/useCartBadge.ts)
+**关键文件**: [`cart/index.vue`](src/views/cart/index.vue) · [`cart/confirm.vue`](src/views/cart/confirm.vue) · [`cart.ts`](src/stores/cart.ts) · [`useCartBadge.ts`](src/hooks/useCartBadge.ts)
 
 ### 订单管理
 
@@ -436,7 +442,7 @@ dist/assets/
 - 待支付订单自动清理过期记录
 - 物流查询、确认收货、商品评价、申请售后
 
-**关键文件**: [`order/`](src/components/order/) · [`pendingPayment.ts`](src/stores/pendingPayment.ts) · [`order.ts`](src/constants/order.ts) · [`useCountdown.ts`](src/hooks/useCountdown.ts)
+**关键文件**: [`order/`](src/views/order/) · [`pendingPayment.ts`](src/stores/pendingPayment.ts) · [`order.ts`](src/constants/order.ts) · [`useCountdown.ts`](src/hooks/useCountdown.ts)
 
 ---
 
