@@ -1,5 +1,5 @@
 dist/
 node_modules/
 *.min.js
-e2e/
+tests/e2e/
 playwright.config.ts

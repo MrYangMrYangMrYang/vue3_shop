@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router/index'
-import './assets/styles/common.css'
+import './styles/common.css'
 import { Lazyload, showFailToast } from 'vant'
 import 'vant/es/toast/style'
 import 'vant/es/dialog/style'

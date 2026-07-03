@@ -1,5 +1,5 @@
 # ──────────────────── Build Stage ────────────────────
-FROM node:18-alpine AS build-stage
+FROM node:20-alpine AS build-stage
 WORKDIR /app
 
 # 利用 Docker 层缓存：先装依赖，再复制源码
@@ -13,7 +13,7 @@ RUN npm run type-check && npm run test && npm run build
 FROM nginx:alpine AS serve-stage
 
 # 注入自定义 Nginx 配置
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # 复制构建产物
 COPY --from=build-stage /app/dist /usr/share/nginx/html

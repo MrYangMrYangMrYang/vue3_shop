@@ -15,7 +15,19 @@
   <div class="order-info-page">
     <van-nav-bar title="订单详情" left-arrow @click-left="back" class="custom-nav" />
 
-    <div class="order-content" v-if="list && list.id">
+    <!-- 加载态 -->
+    <div class="order-content" v-if="loading">
+      <van-skeleton title :row="8" class="skeleton-card" />
+    </div>
+
+    <!-- 错误态 -->
+    <NetworkError v-else-if="hasError" message="订单信息加载失败" @retry="retry" />
+
+    <!-- 空态（API 返回无数据） -->
+    <van-empty v-else-if="!list || !list.id" image="search" description="未找到该订单" />
+
+    <!-- 正常数据 -->
+    <div class="order-content" v-else>
       <!-- 待付款倒计时 -->
       <div v-if="isPendingPayment(list.status) && !isPaymentExpired(list.createtime)" class="countdown-bar">
         <van-icon name="clock-o" />
@@ -106,6 +118,7 @@
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onBeforeMount, onBeforeUnmount, computed } from 'vue'
 import { POST, isCancel } from '@/services/request'
+import NetworkError from '@/components/common/NetworkError.vue'
 import { useBack, useCountdown, useAbortController, useBusid } from '@/hooks'
 import { showFailToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '@/stores/user'
@@ -168,6 +181,8 @@ const busid = useBusid()
 
 const orderid = getRouteQueryValue(route.query, 'orderid', 0)
 
+const loading = ref(true)
+const hasError = ref(false)
 const list = ref<OrderDetail>({} as OrderDetail)
 const prolist = ref<OrderProduct[]>([])
 const contact = ref('')
@@ -183,6 +198,13 @@ const statusColor = computed(() => getOrderStatusColor(list.value.status))
 const { countdownMap, startCountdown, stopCountdown } = useCountdown(() => [list.value], isPendingPayment)
 const countdownText = computed(() => countdownMap.value[list.value.id] || '')
 
+/** 重试加载 */
+const retry = () => {
+  hasError.value = false
+  loading.value = true
+  onBeforeMountHandler()
+}
+
 const contacts = () => {
   showConfirmDialog({
     title: '拨打提醒',
@@ -195,7 +217,7 @@ const contacts = () => {
     .catch(() => {})
 }
 
-onBeforeMount(async () => {
+const onBeforeMountHandler = async () => {
   const isLocalOrder = String(orderid).startsWith('LOCAL_')
 
   if (isLocalOrder) {
@@ -249,7 +271,10 @@ onBeforeMount(async () => {
     await Promise.allSettled([getInfo(), expressinfo(), getproductinfo()])
     startCountdown()
   }
-})
+  loading.value = false
+}
+
+onBeforeMount(onBeforeMountHandler)
 
 onBeforeUnmount(() => {
   stopCountdown()
@@ -263,7 +288,7 @@ const getInfo = async () => {
       signal
     })
     if (isBizFail(result) || !result.data) {
-      showFailToast(result.msg || '订单信息加载失败')
+      hasError.value = true
       return
     }
     const data = result.data as OrderDetail
@@ -273,7 +298,7 @@ const getInfo = async () => {
     list.value = data
   } catch (error) {
     if (isCancel(error)) return
-    showFailToast('订单信息加载失败，请稍后重试')
+    hasError.value = true
   }
 }
 

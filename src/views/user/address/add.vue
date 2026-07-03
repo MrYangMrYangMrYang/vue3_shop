@@ -26,7 +26,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { areaList } from '@vant/area-data'
@@ -44,7 +44,13 @@ const saving = ref(false)
 const back = useBack()
 
 /** 保存新地址 */
-const save = async info => {
+const save = async (info: {
+  name: string
+  tel: string
+  addressDetail: string
+  areaCode: string
+  isDefault: boolean
+}) => {
   if (saving.value) return false
   const data = {
     busid: business.id,
@@ -59,12 +65,12 @@ const save = async info => {
   try {
     const result = await POST({ url: '/address/add', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '保存失败')
       return false
     }
 
     showSuccessToast({
-      message: result.msg,
+      message: result.msg || '保存成功',
       onClose: () => {
         router.go(-1)
       }

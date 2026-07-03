@@ -67,7 +67,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { reactive, ref, onBeforeUnmount } from 'vue'
 import { showSuccessToast, showFailToast } from 'vant'
@@ -89,7 +89,7 @@ const { displayAvatar, handleAvatarError } = useAvatar(() => business.avatar_tex
 
 const content = ref('发送验证码')
 const sec = ref(60)
-let T
+const timer = ref<ReturnType<typeof setInterval> | null>(null)
 const click = ref(false)
 const sendingCode = ref(false)
 const verifying = ref(false)
@@ -103,18 +103,18 @@ const send = async () => {
     const result = await POST({ url: '/business/email', params: { email: business.email } })
 
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '操作失败')
       return false
     }
 
-    showSuccessToast(result.msg)
+    showSuccessToast(result.msg || '操作成功')
 
     click.value = true
-    T = setInterval(() => {
+    timer.value = setInterval(() => {
       sec.value--
       content.value = sec.value + 's后可重新发送'
       if (sec.value <= 0) {
-        clearInterval(T)
+        clearInterval(timer.value!)
         content.value = '重新发送'
         sec.value = 60
         click.value = false
@@ -128,7 +128,7 @@ const send = async () => {
 }
 
 /** 提交验证码 */
-const email = async values => {
+const email = async (values: { email: string; code: string }) => {
   if (verifying.value) return false
 
   const data = { email: values.email, code: values.code, id: business.id }
@@ -137,7 +137,7 @@ const email = async values => {
   try {
     const result = await POST({ url: '/business/emailcheck', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '验证失败')
       return false
     }
 
@@ -157,7 +157,10 @@ const email = async values => {
 }
 
 onBeforeUnmount(() => {
-  if (T) clearInterval(T)
+  if (timer.value) {
+    clearInterval(timer.value)
+    timer.value = null
+  }
 })
 </script>
 

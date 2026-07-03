@@ -10,8 +10,12 @@ interface BizResult {
   [key: string]: unknown
 }
 
-/** 提取业务状态码 */
-const getResultCode = (result?: BizResult | null): number => Number(result?.code)
+/** 提取业务状态码，缺失时返回 -1（既非成功也非失败，由调用方决定处理策略） */
+const getResultCode = (result?: BizResult | null): number => {
+  const code = result?.code
+  if (code === undefined || code === null) return -1
+  return Number(code)
+}
 
 /** 判断业务是否成功（code=1） */
 const isBizSuccess = (result?: BizResult | null): boolean => getResultCode(result) === 1

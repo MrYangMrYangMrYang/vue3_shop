@@ -8,10 +8,10 @@ describe('getResultCode', () => {
     expect(getResultCode({ code: '1' })).toBe(1)
   })
 
-  it('缺失 code 返回 NaN', () => {
-    expect(getResultCode({})).toBeNaN()
-    expect(getResultCode(null)).toBeNaN()
-    expect(getResultCode(undefined)).toBeNaN()
+  it('缺失 code 返回 -1', () => {
+    expect(getResultCode({})).toBe(-1)
+    expect(getResultCode(null)).toBe(-1)
+    expect(getResultCode(undefined)).toBe(-1)
   })
 })
 

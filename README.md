@@ -6,62 +6,37 @@
   <img src="https://img.shields.io/badge/Vite-4.x-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Vant-4.x-07C160?style=flat-square&logo=vant&logoColor=white" alt="Vant" />
   <img src="https://img.shields.io/badge/Pinia-3.x-F9A825?style=flat-square&logo=pinia&logoColor=white" alt="Pinia" />
-  <img src="https://img.shields.io/badge/Vitest-241%20tests-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt="Vitest" />
+  <img src="https://img.shields.io/badge/Vitest-236%20tests-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt="Vitest" />
   <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" />
-  <a href="http://8.163.98.227:8083" target="_blank">
-    <img src="https://img.shields.io/badge/Preview-Online-green?style=flat-square&logo=google-chrome&logoColor=white" alt="Online Preview" />
-  </a>
 </p>
 
 <p align="center">
   <strong>基于 Vue 3 + TypeScript + Vite + Vant 构建的现代化移动端商城解决方案</strong>
 </p>
 
-<p align="center">
-  <a href="http://8.163.98.227:8083" target="_blank">🌐 在线预览</a>
-</p>
-
 ---
 
 ## 📖 目录
 
-- [✨ 项目简介](#-项目简介)
-- [📸 项目截图](#-项目截图)
-- [🎯 核心特性](#-核心特性)
-- [🛠️ 技术栈](#️-技术栈)
-- [📦 快速开始](#-快速开始)
-- [📁 项目结构](#-项目结构)
-- [🏗️ 架构设计](#️-架构设计)
-- [🔧 工程化体系](#-工程化体系)
-- [⚡ 性能优化](#-性能优化)
-- [💼 业务模块](#-业务模块)
-- [⚙️ 配置说明](#️-配置说明)
-- [🚀 部署指南](#-部署指南)
-- [❓ 常见问题](#-常见问题)
-- [📄 许可证](#-许可证)
+- [项目简介](#项目简介)
+- [核心特性](#核心特性)
+- [技术栈](#技术栈)
+- [快速开始](#快速开始)
+- [项目结构](#项目结构)
+- [架构设计](#架构设计)
+- [工程化体系](#工程化体系)
+- [性能优化](#性能优化)
+- [业务模块](#业务模块)
+- [配置说明](#配置说明)
+- [部署指南](#部署指南)
+- [常见问题](#常见问题)
+- [许可证](#许可证)
 
 ---
 
 ## ✨ 项目简介
 
-Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 Composition API + `<script setup>` + TypeScript 语法开发，覆盖从用户注册登录、商品浏览、购物车管理、订单处理到售后服务的完整电商业务闭环。工程化方面配备 TypeScript 类型检查、Vitest 单元测试（241 用例）、ESLint + Prettier 代码规范、Husky + commitlint 提交规范、GitHub Actions CI 全流程质量门禁。
-
----
-
-## 📸 项目截图
-
-<table>
-  <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/home.png" alt="首页"><br>首页</td>
-    <td width="33%" align="center"><img src="docs/screenshots/product-list.png" alt="商品列表"><br>商品列表</td>
-    <td width="33%" align="center"><img src="docs/screenshots/product-info.png" alt="商品详情"><br>商品详情</td>
-  </tr>
-  <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/cart.png" alt="购物车"><br>购物车</td>
-    <td width="33%" align="center"><img src="docs/screenshots/order-list.png" alt="订单列表"><br>订单列表</td>
-    <td width="33%" align="center"><img src="docs/screenshots/business.png" alt="个人中心"><br>个人中心</td>
-  </tr>
-</table>
+Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 Composition API + `<script setup lang="ts">` + TypeScript 语法开发，覆盖从用户注册登录、商品浏览、购物车管理、订单处理到售后服务的完整电商业务闭环。工程化方面：TypeScript 严格模式 0 errors、Vitest 单元测试 236 用例、Playwright E2E 覆盖核心购物闭环、ESLint + Prettier 代码规范、Husky + commitlint 提交规范、GitHub Actions CI/CD 全链路质量门禁。
 
 ---
 
@@ -112,7 +87,7 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 | 技术                                                      | 版本    | 用途                         |
 | --------------------------------------------------------- | ------- | ---------------------------- |
 | [TypeScript](https://www.typescriptlang.org/)             | ~5.4.5  | 类型安全（渐进式迁移）       |
-| [vue-tsc](https://github.com/vuejs/language-tools)        | ^1.8.27 | Vue SFC 类型检查             |
+| [vue-tsc](https://github.com/vuejs/language-tools)        | ^2.2.12 | Vue SFC 类型检查             |
 | [Vitest](https://vitest.dev/)                             | ^4.1.9  | 单元测试框架                 |
 | [@vitest/coverage-v8](https://vitest.dev/)                | ^4.1.9  | 测试覆盖率（V8 provider）    |
 | [ESLint](https://eslint.org/)                             | ^8.57.1 | 代码规范检查                 |
@@ -153,6 +128,8 @@ npm run preview
 
 访问 http://localhost:6060 查看应用
 
+> 🌐 **在线预览**：[http://8.163.98.227:8083](http://8.163.98.227:8083)
+
 ### 工程化脚本
 
 ```bash
@@ -174,13 +151,12 @@ npm run test:e2e:report # E2E 测试报告
 
 ```
 vue_shop/
-├── .github/workflows/               # GitHub Actions CI（lint → type-check → test → build）
+├── .github/workflows/               # GitHub Actions CI（lint → type-check → unit test → build → e2e）
 ├── .husky/                          # Git Hooks（pre-commit + commit-msg）
-├── docs/screenshots/                # README 截图
-├── e2e/                             # E2E 端到端测试（Playwright + Mock API）
+├── tests/e2e/                        # E2E 端到端测试（Playwright + Mock API）
 ├── public/                          # 静态资源（PWA manifest + Service Worker）
 ├── src/
-│   ├── assets/styles/               # 全局样式（common.css）
+│   ├── styles/                      # 全局样式（common.css）
 │   ├── views/                       # 路由页面（18 个 .vue 文件）
 │   │   ├── __tests__/               # 页面组件测试
 │   │   ├── user/                    # 用户中心（资料、邮箱、地址管理）
@@ -188,8 +164,8 @@ vue_shop/
 │   │   ├── order/                   # 订单（列表、详情、物流、评价）
 │   │   ├── product/                 # 商品（列表、详情）
 │   │   ├── home.vue                 # 首页
-│   │   ├── login.vue                # 登录页（lang="ts"）
-│   │   ├── register.vue             # 注册页（lang="ts"）
+│   │   ├── login.vue                # 登录页
+│   │   ├── register.vue             # 注册页
 │   │   └── NotFound.vue             # 404 兜底页
 │   ├── components/                  # 可复用组件（6 个 .vue 文件）
 │   │   ├── common/                  # 底部导航 / 网络错误页 / 错误边界
@@ -198,7 +174,7 @@ vue_shop/
 │   │   │   └── __tests__/
 │   │   ├── order/                   # OrderCard
 │   │   └── cart/                    # ConfirmSkeleton
-│   ├── constants/order.ts           # 常量定义（订单状态枚举 + 辅助函数）
+│   ├── constants/                   # 常量定义（order.ts 订单状态 + theme.ts 品牌色）
 │   ├── hooks/                       # Composable（7 个，含 barrel export）
 │   │   └── __tests__/               # Hooks 单元测试（4 个 .test.ts，36 用例）
 │   ├── router/index.ts              # 路由配置与守卫（含 RouteMeta 类型扩展）
@@ -207,9 +183,9 @@ vue_shop/
 │   │   └── __tests__/               # request 单元测试（2 个 .test.ts，41 用例）
 │   ├── stores/                      # Pinia 状态（user / cart / pendingPayment）
 │   │   └── __tests__/               # stores 单元测试（3 个 .test.ts，53 用例）
-│   ├── types/                       # 类型声明（vant.d.ts / shims.d.ts）
-│   ├── utils/                       # 工具函数（11 个 .ts：cache / currency / date / debounce / throttle / validate / mask / clipboard / countdown / params / result）
-│   │   └── __tests__/               # 单元测试（11 个 .test.ts，97 用例）
+│   ├── types/                       # 类型声明（shims.d.ts）
+│   ├── utils/                       # 工具函数（10 个 .ts：cache / currency / date / debounce / validate / mask / clipboard / countdown / params / result）
+│   │   └── __tests__/               # 单元测试（10 个 .test.ts，92 用例）
 │   ├── App.vue                      # 根组件（Suspense + keep-alive + 路由切换动画）
 │   ├── main.ts                      # 应用入口（全局错误处理 + Web Vitals 上报）
 │   └── env.d.ts                     # Vite 环境变量类型声明
@@ -218,7 +194,7 @@ vue_shop/
 ├── tsconfig.json / tsconfig.node.json  # TypeScript 配置
 ├── vite.config.js / vitest.config.js   # 构建 & 测试配置
 ├── commitlint.config.js / components.d.ts  # 提交规范 / 组件自动注册声明
-├── Dockerfile / .dockerignore / nginx.conf  # Docker 部署
+├── docker/                            # Docker 部署（Dockerfile + nginx.conf）
 └── package.json
 ```
 
@@ -268,18 +244,18 @@ vue_shop/
 
 ### TypeScript 渐进式迁移
 
-采用 `allowJs` 策略实现 JS→TS 平滑过渡，非组件层 100% TS 化，核心业务组件已迁移至 `<script setup lang="ts">`。已开启 `strict: true` 完整严格模式（含 strictNullChecks / noImplicitAny / strictFunctionTypes / strictPropertyInitialization 等全部 8 项严格检查）。
+全部 18 个视图组件与 6 个公共组件均已使用 `<script setup lang="ts">`，非组件层 100% TypeScript。开启 `strict: true` 完整严格模式，结合 vue-tsc 2.x 确保类型检查无遗漏。
 
-| 层级      | 文件数 | 说明                                                                                                                                                                                            |
-| --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| utils     | 11     | 全部 `.ts`，含完整 JSDoc + 类型导出                                                                                                                                                             |
-| stores    | 3      | user / cart / pendingPayment                                                                                                                                                                    |
-| hooks     | 7      | useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit                                                                                           |
-| services  | 1      | request.ts（ApiResult / RequestOptions 接口 + 拦截器）                                                                                                                                          |
-| constants | 1      | order.ts（ORDER_STATUS 枚举）                                                                                                                                                                   |
-| router    | 1      | index.ts（含 RouteMeta 模块增强）                                                                                                                                                               |
-| 入口      | 2      | main.ts / env.d.ts（Vite 环境变量类型）                                                                                                                                                         |
-| 组件      | 15     | 全部 `<script setup lang="ts">`：home / login / register / list / info / SkuPanel / cart-index / confirm / ConfirmSkeleton / order-index / info / OrderCard / express / ErrorBoundary / profile |
+| 层级      | 文件数 | 说明                                                                                                                                                                                                                                                                       |
+| --------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| utils     | 10     | 全部 `.ts`，含完整 JSDoc + 类型导出                                                                                                                                                                                                                                        |
+| stores    | 3      | user / cart / pendingPayment                                                                                                                                                                                                                                               |
+| hooks     | 7      | useCountdown / useBack / useAvatar / useCartBadge / useAbortController / useBusid / useCheckoutSubmit                                                                                                                                                                      |
+| services  | 1      | request.ts（ApiResult / RequestOptions 接口 + 拦截器）                                                                                                                                                                                                                     |
+| constants | 2      | order.ts（ORDER_STATUS 枚举）+ theme.ts（品牌色常量）                                                                                                                                                                                                                      |
+| router    | 1      | index.ts（含 RouteMeta 模块增强）                                                                                                                                                                                                                                          |
+| 入口      | 2      | main.ts / env.d.ts（Vite 环境变量类型）                                                                                                                                                                                                                                    |
+| 组件      | 24     | 全部 `<script setup lang="ts">`（18 视图 + 6 组件）：home / login / register / list / info / SkuPanel / cart-index / confirm / ConfirmSkeleton / order-index / info / express / evaluate / NotFound / ErrorBoundary / Menu / NetworkError / profile / email / address 系列 |
 
 ```bash
 npm run type-check   # vue-tsc --noEmit，0 errors
@@ -287,11 +263,11 @@ npm run type-check   # vue-tsc --noEmit，0 errors
 
 ### 单元测试
 
-基于 Vitest + happy-dom，覆盖 utils / stores / hooks / services / components 五层，共 **241 个用例**（24 个测试文件）：
+基于 Vitest + happy-dom，覆盖 utils / stores / hooks / services / components 五层，共 **236 个用例**（23 个测试文件）：
 
 | 层级       | 测试文件 | 用例数 | 覆盖重点                                                                       |
 | ---------- | -------- | ------ | ------------------------------------------------------------------------------ |
-| utils      | 11       | 97     | cache / currency / date / debounce / throttle / validate / mask 等             |
+| utils      | 10       | 92     | cache / currency / date / debounce / validate / mask 等                        |
 | stores     | 3        | 53     | pendingPayment（32）/ user（13）/ cart（8）                                    |
 | services   | 2        | 41     | request 拦截器（token / 401 / 重试 / silent）+ 去重 / 图片域名转换             |
 | hooks      | 4        | 36     | useCountdown（11）/ useCheckoutSubmit（12）/ useAvatar（7）/ useCartBadge（6） |
@@ -305,7 +281,7 @@ npm run test:coverage     # 覆盖率报告
 
 ### E2E 端到端测试
 
-基于 Playwright + Chromium（移动端视口），覆盖**首页浏览 / 登录注册 / 商品列表 / 404 兜底** 4 个关键场景共 **19 个用例**。API 调用全部通过 `page.route()` 内置 Mock 拦截，不依赖后端。
+基于 Playwright + Chromium（移动端视口），覆盖**游客浏览 / 登录注册 / 完整下单闭环** 5 个关键场景。API 调用全部通过 `page.route()` 内置 Mock 拦截，不依赖后端。
 
 | 测试套件     | 用例数 | 覆盖场景                                        |
 | ------------ | ------ | ----------------------------------------------- |
@@ -313,13 +289,13 @@ npm run test:coverage     # 覆盖率报告
 | 登录页       | 3      | 表单渲染 / 注册入口 / 跳转                      |
 | 注册页       | 3      | 标题 / 验证码 / 提交按钮                        |
 | 商品列表     | 5      | 标题 / 导航栏 / Tab / 列表渲染 / 返回           |
+| 下单闭环     | 2      | 立即支付 / 稍后支付 → 加购 → 结算 → 查看订单    |
 | 404 页面     | 1      | 兜底提示文案                                    |
 
 ```bash
 npm run test:e2e           # 命令行运行
 npm run test:e2e:ui        # 交互式 UI 模式
 npm run test:e2e:report    # 查看 HTML 报告
-npx tsx e2e/screenshots.ts # 重新生成 README 截图
 ```
 
 ### 代码规范
@@ -337,20 +313,22 @@ npm run format        # prettier --write
 
 ### 持续集成（GitHub Actions）
 
-`.github/workflows/ci.yml` 在 push/PR 时自动执行四步质量门禁：
+`.github/workflows/ci.yml` 在 push/PR 时自动执行两个 Job：
 
 ```
-checkout → Node 20 → npm ci → lint:check → type-check → test → build
+quality:  checkout → Node 20 → npm ci → lint:check → type-check → unit test → build
+e2e:      checkout → Node 20 → npm ci → 安装 Chromium → E2E test（依赖 quality 通过）
 ```
 
-`concurrency` 配置取消同分支旧运行，节省 CI 资源。
+E2E 失败时自动上传 Playwright HTML 报告作为 artifact。`concurrency` 配置取消同分支旧运行，节省 CI 资源。
 
 ### 安全防护
 
-- **XSS 净化**：商品详情富文本通过 [DOMPurify](https://github.com/cure53/DOMPurify) 净化后再 `v-html` 渲染，防止后端内容注入
+- **XSS 净化**：商品详情富文本通过 [DOMPurify](https://github.com/cure53/DOMPurify) 净化后再 `v-html` 渲染，`vue/no-v-html` 规则设为 `warn`，仅在使用处行级禁用
 - **Token 鉴权**：请求拦截器条件式注入 `Authorization: Bearer <token>`
 - **401 自动登出**：响应拦截器收到 401 → 清除用户状态 → 跳转登录页（携带 redirect）
 - **请求去重**：`AbortController` + `pendingMap`，仅对 GET 请求去重（写操作不去重，避免丢业务请求）
+- **Nginx 安全头**：`X-Frame-Options` / `X-Content-Type-Options` / `X-XSS-Protection` / `Referrer-Policy` / `Permissions-Policy`
 
 ---
 
@@ -554,6 +532,8 @@ export default defineConfig(({ mode }) => {
 
 ### Nginx 部署
 
+参见 [`docker/nginx.conf`](docker/nginx.conf)（含安全头、SPA fallback、API 代理、Brotli/Gzip 预压缩、静态资源长缓存）。关键配置：
+
 ```nginx
 server {
     listen 80;
@@ -561,28 +541,36 @@ server {
     root /var/www/vue_shop/dist;
     index index.html;
 
-    # Vue Router History 模式
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # SPA fallback（index.html 禁止缓存）
     location / {
         try_files $uri $uri/ /index.html;
+        location = /index.html {
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        }
     }
 
     # API 反向代理
     location /shop/ {
-        proxy_pass http://www.fastadmin.com/index.php/shop/;
+        proxy_pass http://your-backend.com/index.php/shop/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 30s;
     }
 
-    # 预压缩文件优先（brotli > gzip > 原始）
-    # 需加载 ngx_brotli 模块；若未安装则仅用 gzip_static
+    # Brotli / Gzip 预压缩
     brotli_static on;
     gzip_static on;
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml;
 
-    # 静态资源缓存
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+    # 静态资源长期缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -591,17 +579,17 @@ server {
 
 ### Docker 部署
 
-项目已包含 [`Dockerfile`](Dockerfile) + [`nginx.conf`](nginx.conf)，可直接构建运行：
+项目已包含 [`Dockerfile`](docker/Dockerfile) + [`nginx.conf`](docker/nginx.conf)，可直接构建运行：
 
 ```bash
 # 构建镜像
-docker build -t vue-shop .
+docker build -f docker/Dockerfile -t vue-shop .
 
 # 启动容器
 docker run -d -p 80:80 --name vue-shop vue-shop
 ```
 
-构建流程：`npm ci → type-check → test → build → nginx serve`，健康检查端点 `/`。
+构建流程：`npm ci → type-check → test → build → nginx serve`（仅单元测试，E2E 需浏览器环境不在此运行），含健康检查端点 `/`。
 
 ---
 

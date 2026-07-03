@@ -38,7 +38,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineOptions({ name: 'Business' })
 
 import Menu from '@/components/common/Menu.vue'

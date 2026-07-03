@@ -267,7 +267,8 @@ describe('GET / POST / UPLOAD 请求方法', () => {
       '/upload',
       expect.any(FormData),
       expect.objectContaining({
-        headers: { 'Content-Type': 'multipart/form-data' }
+        silent: undefined,
+        signal: undefined
       })
     )
 

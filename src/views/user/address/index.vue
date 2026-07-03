@@ -60,7 +60,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { reactive, ref, onBeforeMount, nextTick } from 'vue'
 import { useUserStore } from '@/stores/user'
@@ -75,7 +75,7 @@ const router = useRouter()
 const route = useRoute()
 
 const business = userStore.userInfo || {}
-const list = reactive([])
+const list = reactive<{ id: string | number; name: string; tel: string; address: string; isDefault: boolean }[]>([])
 const active = ref('')
 const loading = ref(true)
 const handlingOrderSelect = ref(false)
@@ -97,23 +97,26 @@ const add = () => {
 }
 
 /** 编辑地址 */
-const edit = item => {
+const edit = (item: { id: string | number }) => {
   router.push({ path: '/business/address/edit', query: { id: item.id } })
 }
 
 /** 切换默认地址 */
-const select = async (item, index) => {
+const select = async (
+  item: { id: string | number; name: string; tel: string; address: string; isDefault: boolean },
+  index: number
+) => {
   try {
     const data = { busid: business.id, id: item.id }
     const result = await POST({ url: '/address/toggle', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '操作失败')
       return false
     }
 
-    active.value = item.id
-    list.map(item => {
-      item.isDefault = false
+    active.value = String(item.id)
+    list.forEach(addr => {
+      addr.isDefault = false
     })
     list[index].isDefault = true
     showSuccessToast('已设为默认地址')
@@ -123,7 +126,13 @@ const select = async (item, index) => {
 }
 
 /** 下单场景：选择地址并跳转结算页 */
-const order = async item => {
+const order = async (item: {
+  id?: string | number
+  name?: string
+  tel?: string
+  address?: string
+  item?: { id: string | number; name?: string; tel?: string; address?: string }
+}) => {
   if (handlingOrderSelect.value) return
 
   handlingOrderSelect.value = true
@@ -135,8 +144,8 @@ const order = async item => {
       return
     }
 
-    active.value = selectedId
-    userStore.setSelectedAddressId(selectedId)
+    active.value = String(selectedId)
+    userStore.setSelectedAddressId(String(selectedId))
     userStore.setSelectedAddress({
       id: selectedId,
       name: selectedItem?.name || '',
@@ -159,14 +168,17 @@ const order = async item => {
 }
 
 /** 下单场景：点击地址项 */
-const handleOrderClickItem = async item => {
+const handleOrderClickItem = async (item: {
+  id?: string | number
+  item?: { id: string | number; name?: string; tel?: string; address?: string }
+}) => {
   const selectedItem = item?.id ? item : item?.item
   if (!selectedItem?.id) return
   await order(selectedItem)
 }
 
 /** 下单场景：选择地址按钮 */
-const handleOrderChoose = async item => {
+const handleOrderChoose = async (item: { id: string | number; name?: string; tel?: string; address?: string }) => {
   await order(item)
 }
 
@@ -176,11 +188,18 @@ onBeforeMount(async () => {
   try {
     const result = await POST({ url: '/address/index', params: { busid: business.id } })
 
-    if (isBizFail(result) || !result.data || result.data.length <= 0) return false
+    if (isBizFail(result) || !result.data || (result.data as unknown[]).length <= 0) return false
 
-    for (const item of result.data) {
+    for (const item of result.data as {
+      id: string | number
+      consignee: string
+      mobile: string
+      address: string
+      address_text: string
+      status: string
+    }[]) {
       const status = item.status == '1'
-      if (status) active.value = item.id
+      if (status) active.value = String(item.id)
       list.push({
         id: item.id,
         name: item.consignee,
@@ -193,8 +212,8 @@ onBeforeMount(async () => {
     // 下单模式：恢复已选地址
     if (actionType.value === 'order' && userStore.selectedAddressId) {
       const selectedId = Number(userStore.selectedAddressId) || userStore.selectedAddressId
-      const hasSelected = list.some(item => String(item.id) === String(selectedId))
-      if (hasSelected) active.value = selectedId
+      const hasSelected = list.some((item: { id: string | number }) => String(item.id) === String(selectedId))
+      if (hasSelected) active.value = String(selectedId)
     }
   } catch (error) {
     showFailToast('地址列表加载失败，请稍后重试')

@@ -68,6 +68,7 @@
           <span class="text">商品详情</span>
           <span class="line"></span>
         </div>
+        <!-- eslint-disable-next-line vue/no-v-html -->
         <div class="rich-content" v-html="sanitizedContent"></div>
       </div>
 

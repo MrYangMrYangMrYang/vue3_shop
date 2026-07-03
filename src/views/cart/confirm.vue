@@ -112,7 +112,7 @@ import { roundToTwo, formatAmount, toFen } from '@/utils/currency'
 import { normalizeIdList, getRouteQueryValue } from '@/utils/params'
 import { isBizFail } from '@/utils/result'
 import { useBack, useBusid, useCheckoutSubmit, type CartItem, type AddressItem } from '@/hooks'
-import ConfirmSkeleton from './ConfirmSkeleton.vue'
+import ConfirmSkeleton from '@/components/cart/ConfirmSkeleton.vue'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -132,8 +132,11 @@ const address = reactive<AddressItem[]>([])
 
 /** 返回并清除临时购物车记录 */
 const backbuy = async () => {
-  const result = await POST({ url: '/cart/delbuy', params: { cartid: cartids, busid } })
-  if (isBizFail(result)) showFailToast(result.msg || '操作失败')
+  try {
+    await POST({ url: '/cart/delbuy', params: { cartid: cartids, busid } })
+  } catch {
+    // 网络异常时静默忽略，继续返回上一页
+  }
   router.go(-1)
 }
 
@@ -277,6 +280,7 @@ const { submit } = useCheckoutSubmit({
   cartlist,
   address,
   cartids,
+  busid,
   remark,
   action,
   totalPrice

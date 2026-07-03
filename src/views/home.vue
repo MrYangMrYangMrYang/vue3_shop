@@ -84,7 +84,7 @@
           <van-swipe class="aui-m-slider" :autoplay="3000" indicator-color="white">
             <van-swipe-item v-for="item in hots" :key="item.id">
               <router-link :to="{ path: '/product/info', query: { proid: item.id } }" class="slider-link">
-                <img v-lazy="item.thumbs_text" class="slider-img" alt="热门商品" />
+                <img v-lazy="item.thumbs_text" class="slider-img" :alt="item.name" />
               </router-link>
             </van-swipe-item>
           </van-swipe>
@@ -155,6 +155,7 @@ interface RecommendItem {
 /** 热门商品项 */
 interface HotItem {
   id: string | number
+  name: string
   thumbs_text: string
 }
 

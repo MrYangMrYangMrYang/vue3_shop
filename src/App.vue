@@ -89,10 +89,14 @@ router.afterEach(to => {
   background: var(--bg-color);
 }
 
-/* 隐藏滚动条 */
+/* 细滚动条（保留可滚动提示，避免 WCAG 违规） */
 ::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
 }
 
 /* 按钮主题色阴影 */

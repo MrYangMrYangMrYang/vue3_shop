@@ -30,7 +30,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { reactive, ref, onBeforeMount } from 'vue'
 import { areaList } from '@vant/area-data'
@@ -50,7 +50,7 @@ const business = userStore.userInfo || {}
 const saving = ref(false)
 const deleting = ref(false)
 
-const address = reactive({})
+const address = reactive<Record<string, unknown>>({})
 
 const back = useBack()
 
@@ -60,22 +60,30 @@ const info = async () => {
     const data = { busid: business.id, id: addrid }
     const result = await POST({ url: '/address/info', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '操作失败')
       return false
     }
 
-    address.name = result.data.consignee
-    address.tel = result.data.mobile
-    address.addressDetail = result.data.address
-    address.isDefault = result.data.status == '1' ? true : false
-    address.areaCode = result.data.district || result.data.city || result.data.province
+    address.name = (result.data as Record<string, unknown>).consignee
+    address.tel = (result.data as Record<string, unknown>).mobile
+    address.addressDetail = (result.data as Record<string, unknown>).address
+    address.isDefault = (result.data as Record<string, unknown>).status == '1'
+    address.areaCode = ((result.data as Record<string, unknown>).district ||
+      (result.data as Record<string, unknown>).city ||
+      (result.data as Record<string, unknown>).province) as string
   } catch (error) {
     showFailToast('地址信息加载失败，请稍后重试')
   }
 }
 
 /** 保存修改 */
-const save = async info => {
+const save = async (info: {
+  name: string
+  tel: string
+  addressDetail: string
+  areaCode: string
+  isDefault: boolean
+}) => {
   if (saving.value) return false
   const data = {
     id: addrid,
@@ -91,7 +99,7 @@ const save = async info => {
   try {
     const result = await POST({ url: '/address/edit', params: data })
     if (isBizFail(result)) {
-      showFailToast(result.msg)
+      showFailToast(result.msg || '保存失败')
       return false
     }
 

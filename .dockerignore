@@ -1,6 +1,8 @@
 node_modules
 dist
 coverage
+test-results
+tests/e2e/report
 .git
 .gitignore
 .husky
@@ -8,7 +10,10 @@ coverage
 !README.md
 .vscode
 .trae
+.claude
 .env.development
 .env.example
 components.d.ts
 stats.html
+playwright.config.ts
+vitest.config.js

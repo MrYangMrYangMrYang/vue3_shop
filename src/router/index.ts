@@ -126,7 +126,7 @@ const router = createRouter({
   }
 })
 
-const BASE_TITLE = 'VueShop'
+const BASE_TITLE = '家居商城'
 
 /** 动态设置页面标题 */
 router.afterEach(to => {

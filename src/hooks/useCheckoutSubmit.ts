@@ -8,6 +8,8 @@ import { ref, type Ref, type ComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showConfirmDialog, showDialog } from 'vant'
 import { usePendingPaymentStore, type PendingOrder } from '@/stores/pendingPayment'
+import { useCartStore } from '@/stores/cart'
+import { POST } from '@/services/request'
 import { normalizeIdList } from '@/utils/params'
 import { formatDateTime } from '@/utils/date'
 import { ORDER_STATUS } from '@/constants/order'
@@ -43,16 +45,18 @@ interface UseCheckoutSubmitOptions {
   cartlist: Ref<CartItem[]>
   address: AddressItem[]
   cartids: string
+  busid: string | number
   remark: Ref<string>
   action: string
   totalPrice: ComputedRef<number>
 }
 
 export function useCheckoutSubmit(options: UseCheckoutSubmitOptions) {
-  const { cartlist, address, cartids, remark, action, totalPrice } = options
+  const { cartlist, address, cartids, busid, remark, action, totalPrice } = options
   const submitting = ref(false)
   const router = useRouter()
   const pendingPaymentStore = usePendingPaymentStore()
+  const cartStore = useCartStore()
 
   /** 跳转到订单列表对应状态 tab */
   const goToOrderList = (status: string | number): void => {
@@ -115,6 +119,12 @@ export function useCheckoutSubmit(options: UseCheckoutSubmitOptions) {
       }
 
       pendingPaymentStore.addPendingOrder(pendingOrderData)
+
+      // 下单后清除对应购物车商品（结算模式下才清，立即购买不处理购物车）
+      if (action !== 'buy') {
+        POST({ url: '/cart/delbuy', params: { cartid: normalizedCartids, busid } }).catch(() => {})
+        cartStore.updateCount(0)
+      }
 
       // 第三步：询问是否立即支付（取消则归档到待支付列表）
       try {

@@ -83,7 +83,7 @@ import { isBizFail } from '@/utils/result'
 import { getCache, setCache } from '@/utils/cache'
 import { isPaymentExpired } from '@/utils/countdown'
 import { useCountdown, useBack, useAbortController, useBusid } from '@/hooks'
-import OrderCard from './OrderCard.vue'
+import OrderCard from '@/components/order/OrderCard.vue'
 
 /** 订单列表项（后端订单 + 本地待支付/已完成订单的字段并集） */
 interface OrderListItem {

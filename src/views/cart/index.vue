@@ -226,7 +226,7 @@ const price = computed(() => {
 
 /** 计算单件商品小计 */
 const getCartTotal = (cart: CartItem): string => {
-  const total = cart.total || roundToTwo(cart.price) * parseInt(String(cart.nums || 0), 10)
+  const total = cart.total ?? roundToTwo(cart.price) * parseInt(String(cart.nums || 0), 10)
   return formatAmount(total)
 }
 

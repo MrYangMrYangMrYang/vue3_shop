@@ -167,7 +167,7 @@ const keywords = ref(getRouteQueryValue(route.query, 'keywords', ''))
 const isFirstLoad = ref(true)
 const isLoading = ref(false)
 const isFromDetail = ref(false)
-let lastRouteQuery: Record<string, unknown> = {}
+const lastRouteQuery = ref<Record<string, unknown>>({})
 const LIST_STATE_CACHE_KEY = 'product:list:view-state'
 
 const FlagList = [
@@ -400,7 +400,8 @@ watch(
 )
 
 onActivated(() => {
-  const queryChanged = route.query.typeid !== lastRouteQuery.typeid || route.query.keywords !== lastRouteQuery.keywords
+  const queryChanged =
+    route.query.typeid !== lastRouteQuery.value.typeid || route.query.keywords !== lastRouteQuery.value.keywords
 
   if (!queryChanged) {
     if (restoreListState()) {
@@ -421,7 +422,7 @@ onActivated(() => {
 })
 
 onDeactivated(() => {
-  lastRouteQuery = { ...route.query }
+  lastRouteQuery.value = { ...route.query }
   saveListState()
 })
 

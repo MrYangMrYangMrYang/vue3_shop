@@ -91,12 +91,19 @@ export const useUserStore = defineStore('user', () => {
         clearUserInfo()
         return false
       }
-    } catch (error) {
-      return false
+    } catch {
+      // 网络异常时保留上次校验结果，避免因网络波动强制登出
+      return isChecked.value && info !== null
     }
   }
 
-  /** 清除所有用户状态（同时清空购物车角标，避免切号残留） */
+  /**
+   * 清除所有用户状态
+   *
+   * 设计说明：登出/切号时同步清空购物车，避免用户 A 看到用户 B 的购物车数据。
+   * 耦合是刻意的——auth 和 cart 在此场景下是一个原子操作。
+   * 若未来需要更松散的耦合，可改用 Pinia $onAction 或 EventBus 模式。
+   */
   const clearUserInfo = (): void => {
     userInfo.value = null
     selectedAddressId.value = null

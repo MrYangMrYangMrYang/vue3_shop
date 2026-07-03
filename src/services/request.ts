@@ -138,7 +138,7 @@ export function processImages(data: unknown): unknown {
       const isImageField = IMAGE_FIELDS.has(key) || key.includes('image') || key.includes('img') || key.includes('icon')
       const hasDomain = value.includes(IMAGE_DOMAIN)
       if ((isImageField || (hasDomain && /\.(jpg|png|gif|jpeg)$/i.test(value))) && hasDomain) {
-        processedData[key] = value.replace(new RegExp('http://' + IMAGE_DOMAIN.replace(/\./g, '\\.'), 'g'), '')
+        processedData[key] = value.replace(new RegExp('https?://' + IMAGE_DOMAIN.replace(/\./g, '\\.'), 'g'), '')
       }
     } else if (value && typeof value === 'object') {
       processedData[key] = processImages(value)
@@ -287,7 +287,6 @@ const UPLOAD = (data: RequestOptions): Promise<ApiResult> => {
   }
   return service
     .post<ApiResult>(data.url, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       silent: data.silent,
       signal: data.signal
     })

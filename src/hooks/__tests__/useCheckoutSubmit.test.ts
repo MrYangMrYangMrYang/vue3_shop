@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   showFailToast: vi.fn(),
   showSuccessToast: vi.fn(),
   showConfirmDialog: vi.fn(),
-  showDialog: vi.fn()
+  showDialog: vi.fn(),
+  post: vi.fn().mockResolvedValue({ code: 1 }),
+  updateCount: vi.fn()
 }))
 
 vi.mock('vue-router', () => ({
@@ -29,6 +31,16 @@ vi.mock('@/stores/pendingPayment', () => ({
     addPendingOrder: mocks.addPendingOrder,
     placeOrder: mocks.placeOrder
   })
+}))
+
+vi.mock('@/stores/cart', () => ({
+  useCartStore: () => ({
+    updateCount: mocks.updateCount
+  })
+}))
+
+vi.mock('@/services/request', () => ({
+  POST: mocks.post
 }))
 
 import { useCheckoutSubmit, type CartItem, type AddressItem } from '../useCheckoutSubmit'
@@ -65,7 +77,7 @@ function setup(
   const action = overrides.action ?? ''
   const totalPrice = computed(() => 100)
 
-  return useCheckoutSubmit({ cartlist, address, cartids, remark, action, totalPrice })
+  return useCheckoutSubmit({ cartlist, address, cartids, busid: 1, remark, action, totalPrice })
 }
 
 describe('useCheckoutSubmit', () => {

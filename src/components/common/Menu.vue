@@ -22,7 +22,7 @@
     <van-tabbar-item
       to="/cart/index"
       icon="cart-o"
-      :badge="badgeCount > 0 ? badgeCount : null"
+      :badge="badgeCount > 0 ? badgeCount : undefined"
       :aria-label="`购物车${badgeCount > 0 ? '，' + badgeCount + '件商品' : ''}`"
     >
       购物车
@@ -31,7 +31,7 @@
   </van-tabbar>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { useCartBadge } from '@/hooks'

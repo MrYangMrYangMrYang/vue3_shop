@@ -39,6 +39,7 @@ export default defineConfig(({ mode }) => {
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'
     },
     build: {
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks: {

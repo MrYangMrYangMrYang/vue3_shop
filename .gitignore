@@ -19,6 +19,9 @@ dist/
 .idea/
 .trae/
 
+# Claude Code
+.claude/
+
 # 操作系统
 .DS_Store
 Thumbs.db
@@ -29,7 +32,7 @@ coverage/
 
 # Playwright
 test-results/
-e2e/report/
+tests/e2e/report/
 
 # Vite 临时文件
 *.timestamp-*

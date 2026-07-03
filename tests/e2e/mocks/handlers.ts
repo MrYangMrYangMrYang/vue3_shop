@@ -6,9 +6,16 @@ import type { Page } from '@playwright/test'
 import {
   HOME_RESPONSE,
   PRODUCT_LIST_RESPONSE,
+  PRODUCT_INFO_RESPONSE,
   LOGIN_SUCCESS_RESPONSE,
   LOGIN_CHECK_RESPONSE,
-  NOT_LOGGED_IN_RESPONSE
+  NOT_LOGGED_IN_RESPONSE,
+  CART_ADD_RESPONSE,
+  CART_LIST_RESPONSE,
+  ADDRESS_LIST_RESPONSE,
+  ORDER_CREATE_RESPONSE,
+  ORDER_LIST_RESPONSE,
+  CART_DELBUY_RESPONSE
 } from './fixtures'
 
 /**
@@ -66,6 +73,10 @@ export async function setupLoggedInUser(page: Page): Promise<void> {
       return route.fulfill({ json: LOGIN_CHECK_RESPONSE })
     }
 
+    if (url.includes('/business/login')) {
+      return route.fulfill({ json: LOGIN_SUCCESS_RESPONSE })
+    }
+
     if (url.includes('/index/index')) {
       return route.fulfill({ json: HOME_RESPONSE })
     }
@@ -74,24 +85,36 @@ export async function setupLoggedInUser(page: Page): Promise<void> {
       return route.fulfill({ json: PRODUCT_LIST_RESPONSE })
     }
 
+    if (url.includes('/index/info')) {
+      return route.fulfill({ json: PRODUCT_INFO_RESPONSE })
+    }
+
+    if (url.includes('/cart/add')) {
+      return route.fulfill({ json: CART_ADD_RESPONSE })
+    }
+
     if (url.includes('/cart/index')) {
-      return route.fulfill({
-        json: {
-          code: 1,
-          data: {
-            data: [
-              {
-                id: 1,
-                name: '北欧简约沙发',
-                price: 2999,
-                thumbs_text: 'https://picsum.photos/100/100?random=40',
-                nums: 2,
-                stock: 10
-              }
-            ]
-          }
-        }
-      })
+      return route.fulfill({ json: CART_LIST_RESPONSE })
+    }
+
+    if (url.includes('/cart/delbuy')) {
+      return route.fulfill({ json: CART_DELBUY_RESPONSE })
+    }
+
+    if (url.includes('/address/index')) {
+      return route.fulfill({ json: ADDRESS_LIST_RESPONSE })
+    }
+
+    if (url.includes('/address/order')) {
+      return route.fulfill({ json: ADDRESS_LIST_RESPONSE })
+    }
+
+    if (url.includes('/order/create')) {
+      return route.fulfill({ json: ORDER_CREATE_RESPONSE })
+    }
+
+    if (url.includes('/order/index')) {
+      return route.fulfill({ json: ORDER_LIST_RESPONSE })
     }
 
     return route.fulfill({ json: { code: 1, data: {} } })

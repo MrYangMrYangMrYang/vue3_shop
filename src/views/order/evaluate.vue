@@ -35,7 +35,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineOptions({ name: 'OrderEvaluate' })
 
 import { useRouter, useRoute } from 'vue-router'

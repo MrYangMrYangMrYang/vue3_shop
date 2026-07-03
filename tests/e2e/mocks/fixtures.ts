@@ -126,3 +126,84 @@ export const NOT_LOGGED_IN_RESPONSE = {
   code: 0,
   msg: '未登录'
 }
+
+// ── 下单链路 Mock 数据 ──
+
+export const PRODUCT_INFO_RESPONSE = {
+  code: 1,
+  data: {
+    id: 1,
+    name: '北欧简约沙发',
+    price: 2999,
+    stock: 10,
+    thumbs_text: 'https://picsum.photos/400/400?random=50',
+    content: '<p>优质布艺面料，舒适耐用</p>',
+    specs: []
+  }
+}
+
+export const CART_ADD_RESPONSE = {
+  code: 1,
+  msg: '添加成功'
+}
+
+export const ADDRESS_LIST_RESPONSE = {
+  code: 1,
+  data: [
+    {
+      id: 1,
+      consignee: '张三',
+      mobile: '13800138000',
+      address: '详细地址 101 室',
+      address_text: '北京市朝阳区',
+      status: '1'
+    }
+  ]
+}
+
+export const CART_LIST_RESPONSE = {
+  code: 1,
+  data: {
+    data: [
+      {
+        id: 101,
+        name: '北欧简约沙发',
+        price: 2999,
+        thumbs_text: 'https://picsum.photos/100/100?random=40',
+        nums: 1,
+        total: 2999,
+        stock: 10
+      }
+    ]
+  }
+}
+
+export const ORDER_CREATE_RESPONSE = {
+  code: 1,
+  msg: '订单提交成功'
+}
+
+export const ORDER_LIST_RESPONSE = {
+  code: 1,
+  data: {
+    data: [
+      {
+        id: 'LOCAL_1720000000000',
+        code: '202407030001',
+        status: '1',
+        status_text: '待发货',
+        name_text: '北欧简约沙发',
+        thumbs_text: 'https://picsum.photos/100/100?random=40',
+        amount: 2999,
+        nums: 1,
+        createtime: Date.now(),
+        createtime_text: '2024-07-03 12:00:00'
+      }
+    ]
+  }
+}
+
+export const CART_DELBUY_RESPONSE = {
+  code: 1,
+  msg: '已清除'
+}
