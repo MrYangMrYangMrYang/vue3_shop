@@ -14,6 +14,12 @@
   <strong>基于 Vue 3 + TypeScript + Vite + Vant 构建的现代化移动端商城解决方案</strong>
 </p>
 
+<p align="center">
+  <a href="http://8.163.98.227:8083" target="_blank">
+    <img src="https://img.shields.io/badge/🌐_在线预览-Online-brightgreen?style=for-the-badge" alt="Online Preview" />
+  </a>
+</p>
+
 ---
 
 ## 📖 目录
@@ -135,8 +141,6 @@ npm run preview
 ```
 
 访问 http://localhost:6060 查看应用
-
-> 🌐 **在线预览**：[http://8.163.98.227:8083](http://8.163.98.227:8083)
 
 ### 工程化脚本
 
@@ -327,14 +331,13 @@ npm run format        # prettier --write
 
 ### 持续集成（GitHub Actions）
 
-`.github/workflows/ci.yml` 在 push/PR 时自动执行两个 Job：
+`.github/workflows/ci.yml` 在 push/PR 时自动执行：
 
 ```
-quality:  checkout → Node 20 → npm ci → lint:check → type-check → unit test → build
-e2e:      checkout → Node 20 → npm ci → 安装 Chromium → E2E test（依赖 quality 通过）
+checkout → Node 20 → npm ci → lint:check → type-check → unit test → build
 ```
 
-E2E 失败时自动上传 Playwright HTML 报告作为 artifact。`concurrency` 配置取消同分支旧运行，节省 CI 资源。
+`concurrency` 配置取消同分支旧运行，节省 CI 资源。
 
 ### 安全防护
 
