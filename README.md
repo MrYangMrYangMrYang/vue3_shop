@@ -34,11 +34,15 @@
 
 ---
 
+<a id="项目简介"></a>
+
 ## ✨ 项目简介
 
 Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 Composition API + `<script setup lang="ts">` + TypeScript 语法开发，覆盖从用户注册登录、商品浏览、购物车管理、订单处理到售后服务的完整电商业务闭环。工程化方面：TypeScript 严格模式 0 errors、Vitest 单元测试 236 用例、Playwright E2E 覆盖核心购物闭环、ESLint + Prettier 代码规范、Husky + commitlint 提交规范、GitHub Actions CI/CD 全链路质量门禁。
 
 ---
+
+<a id="核心特性"></a>
 
 ## 🎯 核心特性
 
@@ -65,6 +69,8 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 - 🔄 售后服务（退货申请、退款处理）
 
 ---
+
+<a id="技术栈"></a>
 
 ## 🛠️ 技术栈
 
@@ -98,6 +104,8 @@ Vue Shop 是一个功能完善的**移动端电商前端项目**，采用 Vue 3 
 | [Playwright](https://playwright.dev/)                     | latest  | E2E 端到端测试               |
 
 ---
+
+<a id="快速开始"></a>
 
 ## 📦 快速开始
 
@@ -146,6 +154,8 @@ npm run test:e2e:report # E2E 测试报告
 ```
 
 ---
+
+<a id="项目结构"></a>
 
 ## 📁 项目结构
 
@@ -200,6 +210,8 @@ vue_shop/
 
 ---
 
+<a id="架构设计"></a>
+
 ## 🏗️ 架构设计
 
 ### 分层架构
@@ -239,6 +251,8 @@ vue_shop/
 ```
 
 ---
+
+<a id="工程化体系"></a>
 
 ## 🔧 工程化体系
 
@@ -332,6 +346,8 @@ E2E 失败时自动上传 Playwright HTML 报告作为 artifact。`concurrency` 
 
 ---
 
+<a id="性能优化"></a>
+
 ## ⚡ 性能优化
 
 ### 构建层优化
@@ -400,6 +416,8 @@ dist/assets/
 
 ---
 
+<a id="业务模块"></a>
+
 ## 💼 业务模块
 
 ### 用户认证
@@ -445,6 +463,8 @@ dist/assets/
 **关键文件**: [`order/`](src/views/order/) · [`pendingPayment.ts`](src/stores/pendingPayment.ts) · [`order.ts`](src/constants/order.ts) · [`useCountdown.ts`](src/hooks/useCountdown.ts)
 
 ---
+
+<a id="配置说明"></a>
 
 ## ⚙️ 配置说明
 
@@ -528,6 +548,8 @@ export default defineConfig(({ mode }) => {
 
 ---
 
+<a id="部署指南"></a>
+
 ## 🚀 部署指南
 
 ### Nginx 部署
@@ -593,6 +615,8 @@ docker run -d -p 80:80 --name vue-shop vue-shop
 
 ---
 
+<a id="常见问题"></a>
+
 ## ❓ 常见问题
 
 **Q: 为什么评价相关接口拼写为 eveluate？**
@@ -617,6 +641,8 @@ A: 后端接口路径 `/order/eveluate` 沿用历史命名无法修改，前端�
 推荐通过 Nginx 反向代理配置，或使用相对路径让前端自动继承当前域名。
 
 ---
+
+<a id="许可证"></a>
 
 ## 📄 许可证
 
